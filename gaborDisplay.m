@@ -5,9 +5,13 @@ function [output] = gaborDisplay
 %   3. Look up best timing parameters. 
 %   4. Reject keypresses during fixation-cross-only display.
 
-addpath(genpath('~/code/pac'));
+Screen('Preference', 'SkipSyncTests', 1); % only for testing purposes
 
-fixationDur = 1;
+atLab = 1;
+directories = {'~/code/pac','~/Desktop/Bethany/paclab'};
+addpath(genpath(directories{atLab+1}));
+
+fixationDur = .75; % duration of fixation cross only
 
 %% USER INPUT
 subj = input('Subject name: ','s');
@@ -17,7 +21,7 @@ if ~exist(fileDir)
     mkdir(fileDir)
 end
 
-if subj == 'test'
+if strcmp(subj,'test')
     nTrials = 6;
 elseif block == 0
     nTrials = 20;
@@ -25,7 +29,7 @@ else
     nTrials = 144;
 end
 
-%% LEVELSz
+%% LEVELS
 crowding = [0:2];
 tilt = [-40 -30 -20 -10 10 20 30 40];
 
@@ -38,17 +42,17 @@ shuffledPairs = allPairs(randperm(size(allPairs,1)),:);
 %% GABOR PATCH PARAMETERS
 
 % DIMENSIONS IN VISUAL DEGREES
-gaborDiam = 2;
+gaborDiam = 2.5;
 
 % Pixel per º/vis ang
 ppd = 40.5;
 
 % si = 50; 
-si = ceil(ppd*(gaborDiam/2))+1; % half the desired gabor size in PIXELS
+si = ceil(ppd*gaborDiam); % desired gabor size in PIXELS
 
-% Size of support in pixels, derived from si:
-tw = 2*si;
-th = 2*si;
+% % Size of support in pixels, derived from si:
+% tw = 2*si;
+% th = 2*si;
 
 phase = 0.5; % Phase of underlying sine grating in degrees:
 sc = 18.0; % Spatial constant of the exponential "hull"
@@ -93,11 +97,12 @@ for i = 1:nTrials
     ifi = Screen('GetFlipInterval', win); % how necessary is this? no animations
     Screen('BlendFunction', win, GL_ONE, GL_ONE);
     mypars = repmat([phase+180, freq, sc, contrast, aspectratio, 0, 0, 0]', 1, nGabors);
-    gabortex = CreateProceduralGabor(win, tw, th, 1);
+    gabortex = CreateProceduralGabor(win, si, si, 1);
     texrect = Screen('Rect', gabortex);
     inrect = repmat(texrect', 1, nGabors);
     
-    ecc = w/4; % eccentricity of target gabor
+    ecc = w/4 + 10; % eccentricity of target gabor
+    radialDist = si*2; % distance btwn targets & flankers
 
     % STIMULUS PARAMETERS
     dstRects = zeros(4, nGabors); 
@@ -109,8 +114,7 @@ for i = 1:nTrials
     dstRects(:,1) = CenterRectOnPoint(texrect, refPtX, refPtY)';
 
     % FLANKER GABORS LOCATION
-    if crowding
-        radialDist = si*4;
+    if crowding        
         dstRects(:,2) = CenterRectOnPoint(texrect, refPtX + radialDist, refPtY)';
         dstRects(:,3) = CenterRectOnPoint(texrect, refPtX + radialDist*cos(deg2rad(60)), refPtY - radialDist*sin(deg2rad(60)))';
         dstRects(:,4) = CenterRectOnPoint(texrect, refPtX - radialDist*cos(deg2rad(60)), refPtY - radialDist*sin(deg2rad(60)))';
@@ -163,12 +167,12 @@ for i = 1:nTrials
     
     while toc(trialStart) < t2wait && timedout
         [keyIsDown, keyTime, keyCode] = KbCheck;
-        if keyIsDown
+        if keyIsDown && ~strcmp(KbName(keyCode),'q')
             Beeper;
             timedout = 0;
             timeElapsed = toc(trialStart);
-        elseif keyIsDown && strcmp(key(1),'q')
-            showcursor;
+        elseif keyIsDown && strcmp(KbName(keyCode),'q')
+            ShowCursor;
             ListenChar(0);
             Screen('CloseAll');
             return;
@@ -179,9 +183,33 @@ for i = 1:nTrials
         rsp.RT(i) = timeElapsed;
         rsp.keyName{i} = KbName(keyCode);
     else
+        Beeper(900);
         rsp.RT(i) = t2wait;
         rsp.keyName{i} = 'none';
     end
+
+    vbl = Screen('Flip', win, vbl + 0.5 * ifi); 
+    
+end
+ListenChar(1)
+ShowCursor();
+sca
+
+output.block = block;
+output.subj = subj;
+output.rsp = rsp;
+output.cnd = shuffledPairs;
+
+if block ~= 0
+    save(sprintf('%s/%s_%d.mat',fileDir,subj,block),'output');
+    if ~exist(sprintf('%s/Raw',fileDir))
+        mkdir(sprintf('%s/Raw',fileDir))
+    end
+    save(sprintf('%s/Raw/%s_%d_raw.mat',fileDir,subj,block));
+end
+
+return
+
 %     
 %     if ~rspGiven
 %         Beeper(900);
@@ -243,24 +271,3 @@ for i = 1:nTrials
 %         rsp.keyName{i} = 'none';
 %     end
     %%%%%%% END %%%%%%%
-    vbl = Screen('Flip', win, vbl + 0.5 * ifi); 
-    
-end
-ListenChar(1)
-ShowCursor();
-sca
-
-output.block = block;
-output.subj = subj;
-output.rsp = rsp;
-output.cnd = shuffledPairs;
-
-if block ~= 0
-    save(sprintf('%s/%s_%d.mat',fileDir,subj,block),'output');
-    if ~exist(sprintf('%s/Raw',fileDir))
-        mkdir(sprintf('%s/Raw',fileDir))
-    end
-    save(sprintf('%s/Raw/%s_%d_raw.mat',fileDir,subj,block));
-end
-
-return
