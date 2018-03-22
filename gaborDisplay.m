@@ -7,7 +7,7 @@ function [output] = gaborDisplay
 
 Screen('Preference', 'SkipSyncTests', 1); % only for testing purposes
 
-atLab = 1;
+atLab = 0;
 directories = {'~/code/pac','~/Desktop/Bethany/paclab'};
 addpath(genpath(directories{atLab+1}));
 
@@ -30,14 +30,17 @@ else
 end
 
 %% LEVELS
+% define all conditions
 crowding = [0:2];
 tilt = [-40 -30 -20 -10 10 20 30 40];
 
+% create pairs of conditions
 [p,q] = meshgrid(crowding, tilt);
 pairs = [p(:) q(:)];
 
+% randomize & replicate conditions for full list of stimuli
 allPairs = repmat(pairs,[6,1]);
-shuffledPairs = allPairs(randperm(size(allPairs,1)),:);
+shuffledPairs = allPairs(randperm(size(allPairs,1)),:); % 144 x 2
 
 %% GABOR PATCH PARAMETERS
 
@@ -200,13 +203,13 @@ output.subj = subj;
 output.rsp = rsp;
 output.cnd = shuffledPairs;
 
-if block ~= 0
+% if block ~= 0 % RE-ENABLE LATER
     save(sprintf('%s/%s_%d.mat',fileDir,subj,block),'output');
     if ~exist(sprintf('%s/Raw',fileDir))
         mkdir(sprintf('%s/Raw',fileDir))
     end
     save(sprintf('%s/Raw/%s_%d_raw.mat',fileDir,subj,block));
-end
+% end
 
 return
 

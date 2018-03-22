@@ -14,13 +14,15 @@ subj = strsplit(subj);
 for s = 1:length(subj)-1
     curSubj = subj{s};
     blocks = mySubFiles(sprintf('%s/%s',parentDir,curSubj),curSubj,1);
-    trialInfo(:,:,s) = getTrialInfo(blocks);
+    trialInfo(:,:,s) = getTrialInfo(blocks); % crowding str, angle, accuracy
 end
 
-noCrowding = trialInfo(find(trialInfo(:,1,:) == 0),:,:);
-lowCrowding = trialInfo(find(trialInfo(:,1,:) == 1),:,:);
-strongCrowding = trialInfo(find(trialInfo(:,1,:) == 2),:,:);
+% sort out the various crowding strengths
+noCrwd = trialInfo(find(trialInfo(:,1,:) == 0),:,:);
+lowCrwd = trialInfo(find(trialInfo(:,1,:) == 1),:,:);
+strongCrwd = trialInfo(find(trialInfo(:,1,:) == 2),:,:);
 
-rspNC = calcCor(noCrowding);
-rspLC = calcCor(lowCrowding);
-rspSC = calcCor(strongCrowding);
+% calculate perc of correct rsp per cond
+rspNC = calcCor(noCrwd); % no crowding
+rspLC = calcCor(lowCrwd); % low crowding
+rspSC = calcCor(strongCrwd); % strong crowding

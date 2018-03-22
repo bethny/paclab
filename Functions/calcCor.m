@@ -1,11 +1,20 @@
-function numCor = calcCor(data)
+function percentCor = calcCor(data)
+% takes in correctness counts per crowding condition and returns accuracy
+% percentages
+% INPUT: nTrial x [crowding str, angle, correctness]
 
-% data = sort(data(:,[2 3]),1);
+% removes irrelevant first col, which tags crowding str
 data = data(:,[2 3]);
-c = unique(data(:,1));
-numCor = cat(2,c,zeros(length(c),1));
-for cnd = 1:length(c) 
-    curCnd = data(find(data == c(cnd)),:);
-    sumCor = sum(curCnd(:,2));
-    numCor(cnd,2) = sumCor;
+
+% sum number of each condition
+uniqueCnd = unique(data(:,1));
+
+% pre-allocate array for input of correct answer counts
+percentCor = cat(2,uniqueCnd,zeros(length(uniqueCnd),1));
+
+for i = 1:length(uniqueCnd)
+    curIdx = find(data(:,1) == uniqueCnd(i));
+    numPerCnd = length(curIdx);
+    curCnd = data(curIdx,:);
+    percentCor(i,2) = sum(curCnd(:,2))/numPerCnd;
 end
