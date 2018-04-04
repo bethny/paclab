@@ -1,19 +1,18 @@
-% [output] = gaborDisplay;
-
 %% LOAD & SORT ANSWERS
 clear all
 close all
 
-codeDir = '~/code';
-parentDir = '~/code/pac/Data/Psychophysics';
-addpath(genpath(parentDir))
-addpath(genpath(codeDir))
+atLab = 1;
+parentDir = {'~/code/pac','~/Desktop/Bethany/paclab'};
+dataDir = {'~/code/pac/Data/Psychophysics', '~/Desktop/Bethany/paclab/Data/Psychophysics'};
+addpath(genpath(parentDir{atLab+1}));
+
 %%
-subj = ls(parentDir);
+subj = ls(dataDir{atLab+1});
 subj = strsplit(subj);
 for s = 1:length(subj)-1
     curSubj = subj{s};
-    blocks = mySubFiles(sprintf('%s/%s',parentDir,curSubj),curSubj,1);
+    blocks = mySubFiles(sprintf('%s/%s',dataDir{atLab+1},curSubj),curSubj,1);
     trialInfo(:,:,s) = getTrialInfo(blocks); % crowding str, angle, accuracy
 end
 

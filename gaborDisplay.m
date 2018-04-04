@@ -1,22 +1,21 @@
 function [output] = gaborDisplay
 
 %%  TO-DO LIST
-%   1. Compute visual angle based on viewing distance & size of screen
 %   3. Look up best timing parameters. 
-%   4. Reject keypresses during fixation-cross-only display.
 
 Screen('Preference', 'SkipSyncTests', 1); % only for testing purposes
 
-atLab = 0;
-directories = {'~/code/pac','~/Desktop/Bethany/paclab'};
-addpath(genpath(directories{atLab+1}));
+atLab = 1;
+parentDir = {'~/code/pac','~/Desktop/Bethany/paclab'};
+dataDir = {'~/code/pac/Data/Psychophysics/%s', '~/Desktop/Bethany/paclab/Data/Psychophysics/%s'};
+addpath(genpath(parentDir{atLab+1}));
 
 fixationDur = .75; % duration of fixation cross only
 
 %% USER INPUT
 subj = input('Subject name: ','s');
 block = input('Block number (0 = practice, 1-x = exp): ');
-fileDir = sprintf('~/code/pac/Data/Psychophysics/%s',subj);
+fileDir = sprintf(dataDir{atLab+1},subj);
 if ~exist(fileDir)
     mkdir(fileDir)
 end
@@ -44,14 +43,19 @@ shuffledPairs = allPairs(randperm(size(allPairs,1)),:); % 144 x 2
 
 %% GABOR PATCH PARAMETERS
 
-% DIMENSIONS IN VISUAL DEGREES
-gaborDiam = 2.5;
-
-% Pixel per º/vis ang
+% Pixel per º/vis ang at viewing distance 57cm
 ppd = 40.5;
 
-% si = 50; 
-si = ceil(ppd*gaborDiam); % desired gabor size in PIXELS
+% DIMENSIONS IN VISUAL DEGREES
+% LIVNE & SAGI PARAMETERS
+ecc = ceil(9*ppd);
+radialDist = ceil(4*ppd);
+gaborDiam = ceil(3*ppd);
+
+% ORIGINAL PARAMETERS
+% gaborDiam = 2.5;
+% ecc = w/4 + 10; % eccentricity of target gabor
+% radialDist = si*2; % distance btwn targets & flankers
 
 % % Size of support in pixels, derived from si:
 % tw = 2*si;
@@ -60,7 +64,7 @@ si = ceil(ppd*gaborDiam); % desired gabor size in PIXELS
 phase = 0.5; % Phase of underlying sine grating in degrees:
 sc = 18.0; % Spatial constant of the exponential "hull"
 freq = 0.05;
-contrast = 25;
+contrast = 15;
 aspectratio = 1.0; % width / height
 
 PsychDefaultSetup(2);
@@ -100,12 +104,9 @@ for i = 1:nTrials
     ifi = Screen('GetFlipInterval', win); % how necessary is this? no animations
     Screen('BlendFunction', win, GL_ONE, GL_ONE);
     mypars = repmat([phase+180, freq, sc, contrast, aspectratio, 0, 0, 0]', 1, nGabors);
-    gabortex = CreateProceduralGabor(win, si, si, 1);
+    gabortex = CreateProceduralGabor(win, gaborDiam, gaborDiam, 1);
     texrect = Screen('Rect', gabortex);
     inrect = repmat(texrect', 1, nGabors);
-    
-    ecc = w/4 + 10; % eccentricity of target gabor
-    radialDist = si*2; % distance btwn targets & flankers
 
     % STIMULUS PARAMETERS
     dstRects = zeros(4, nGabors); 
@@ -142,7 +143,7 @@ for i = 1:nTrials
     WaitSecs(trialITI) %jitters prestim interval between .5 and 1.5 seconds; inter-trial interval  
 
     % DRAW FIXATION CROSS
-    fixCrossDimPix = 20; % size
+    fixCrossDimPix = 10; % size
     xCoords = [-fixCrossDimPix fixCrossDimPix 0 0];
     yCoords = [0 0 -fixCrossDimPix fixCrossDimPix];
     allCoords = [xCoords; yCoords];
