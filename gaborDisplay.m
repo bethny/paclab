@@ -1,74 +1,84 @@
 function [output] = gaborDisplay
 
 %%  TO-DO LIST
-%   3. Look up best timing parameters. 
+%   1. Add masking after ~100ms
 
 Screen('Preference', 'SkipSyncTests', 1); % only for testing purposes
 
 atLab = 1;
-parentDir = {'~/code/pac','~/Desktop/Bethany/paclab'};
-dataDir = {'~/code/pac/Data/Psychophysics/%s', '~/Desktop/Bethany/paclab/Data/Psychophysics/%s'};
-addpath(genpath(parentDir{atLab+1}));
+directories = {'~/code','~/Bethany/paclab'};
+addpath(genpath(directories{atLab+1}));
 
 fixationDur = .75; % duration of fixation cross only
+presentationDur = .2; % duration gabors are visible
+
+%% SCREEN PARAMETERS
+viewDist = 52;
+monitorWidth = 44;
+screenid = max(Screen('Screens'));
+[swidth, ~] = Screen('WindowSize', screenid);
+degPerPixel = atan((monitorWidth/2)/viewDist) * (180/pi) * (2/swidth);
+ppd = 1/degPerPixel;
 
 %% USER INPUT
 subj = input('Subject name: ','s');
 block = input('Block number (0 = practice, 1-x = exp): ');
-fileDir = sprintf(dataDir{atLab+1},subj);
+dataDir = {'~/code/pac/Data/Psychophysics','~/Bethany/paclab/Data/Psychophysics'};
+fileDir = sprintf('%s/%s',dataDir{atLab+1},subj);
 if ~exist(fileDir)
     mkdir(fileDir)
 end
+
+%% GABOR PATCH PARAMETERS
+
+% LIVNE & SAGI PARAMETERS
+ecc = 10;
+radialDist = 4;
+
+% JIANFEI'S PARAMETERS
+contrast = 1;
+gsize = 5;      %size of the grating
+vsize = 2.5;      % LIVNE & SAGI / size of the visible grating (edge size)
+% reachsize = 3;  %size of the reachable area (the threshold for subject grasping)
+% degree = 8.5;    %distance between center and grating
+sf = 1;       %spatial frequency
+
+eccPix = ceil(ecc*ppd);
+radialDistPix = ceil(radialDist*ppd);
+gaborDimPix = round(gsize*ppd);
+VgaborDimPix = round(vsize*ppd);
+sigma = gaborDimPix/8;
+numCycles = gsize*sf;
+freq = numCycles / gaborDimPix;     %spatial frequency of the grating
+freqmask = 0.00001;
+
+%% LEVELS
+% define all conditions
+crowding = 0:2;
+tilt = [-40 -30 -20 -10 10 20 30 40];
+hemifield = [-eccPix eccPix];
+
+nRepeat = 1; % # of times to repeat each cnd
+
+[p,q,r] = meshgrid(crowding, tilt, hemifield);
+cnd = [p(:) q(:) r(:)];
+
+% randomize & replicate conditions for full list of stimuli
+allTrials = repmat(cnd,[nRepeat,1]);
+shuffledTrials = allTrials(randperm(size(allTrials,1)),:); 
 
 if strcmp(subj,'test')
     nTrials = 6;
 elseif block == 0
     nTrials = 20;
 else
-    nTrials = 144;
+    nTrials = length(shuffledTrials);
 end
 
-%% LEVELS
-% define all conditions
-crowding = [0:2];
-tilt = [-40 -30 -20 -10 10 20 30 40];
-
-% create pairs of conditions
-[p,q] = meshgrid(crowding, tilt);
-pairs = [p(:) q(:)];
-
-% randomize & replicate conditions for full list of stimuli
-allPairs = repmat(pairs,[6,1]);
-shuffledPairs = allPairs(randperm(size(allPairs,1)),:); % 144 x 2
-
-%% GABOR PATCH PARAMETERS
-
-% Pixel per º/vis ang at viewing distance 57cm
-ppd = 40.5;
-
-% DIMENSIONS IN VISUAL DEGREES
-% LIVNE & SAGI PARAMETERS
-ecc = ceil(9*ppd);
-radialDist = ceil(4*ppd);
-gaborDiam = ceil(3*ppd);
-
-% ORIGINAL PARAMETERS
-% gaborDiam = 2.5;
-% ecc = w/4 + 10; % eccentricity of target gabor
-% radialDist = si*2; % distance btwn targets & flankers
-
-% % Size of support in pixels, derived from si:
-% tw = 2*si;
-% th = 2*si;
-
-phase = 0.5; % Phase of underlying sine grating in degrees:
-sc = 18.0; % Spatial constant of the exponential "hull"
-freq = 0.05;
-contrast = 15;
-aspectratio = 1.0; % width / height
-
+%% OPENING PTB
+PsychDebugWindowConfiguration(0,1)
 PsychDefaultSetup(2);
-screenid = max(Screen('Screens'));
+
 PsychImaging('PrepareConfiguration');
 PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 [win, winRect] = PsychImaging('OpenWindow', screenid, 0.5);
@@ -82,7 +92,10 @@ activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
 t2wait = 2; % maximum time to wait for response
 RestrictKeysForKbCheck(activeKeys);
 ListenChar(2);
-grey = GrayIndex(win,0.5);
+white = WhiteIndex(win);
+black = BlackIndex(win);
+grey = GrayIndex(win, 0.5);
+
 HideCursor
 Screen(win, 'FillRect', grey);
 Screen('Flip', win); 
@@ -91,8 +104,16 @@ Screen('TextSize', win, 20);
 crowdingInstructions(block, win)
 
 for i = 1:nTrials
-    crowding = shuffledPairs(i,1);
-    tilt = shuffledPairs(i,2);
+    clear texrect
+    clear texrectMask
+    clear inrect
+    clear inrectMask
+    clear dstRects
+    clear dstRectsMask
+    
+    crowding = shuffledTrials(i,1);
+    tilt = shuffledTrials(i,2);
+    eccPix = shuffledTrials(i,3);
 
     if ~crowding
         nGabors = 1;
@@ -102,34 +123,44 @@ for i = 1:nTrials
 
     [w, h] = RectSize(winRect);
     ifi = Screen('GetFlipInterval', win); % how necessary is this? no animations
-    Screen('BlendFunction', win, GL_ONE, GL_ONE);
-    mypars = repmat([phase+180, freq, sc, contrast, aspectratio, 0, 0, 0]', 1, nGabors);
-    gabortex = CreateProceduralGabor(win, gaborDiam, gaborDiam, 1);
-    texrect = Screen('Rect', gabortex);
-    inrect = repmat(texrect', 1, nGabors);
+    Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE);
 
+    m = grey*contrast*makegabor(gaborDimPix,freq,sigma,0,VgaborDimPix); %make gabor
+    gabortex = Screen('MakeTexture', win, m,[],[],2);
+    texrect = Screen('Rect', gabortex);
+    texrectMask = [0 0 VgaborDimPix VgaborDimPix];
+    inrect = repmat(texrect', 1, nGabors);
+    inrectMask = repmat(texrectMask',1,nGabors);
+     
     % STIMULUS PARAMETERS
     dstRects = zeros(4, nGabors); 
     scale = ones(1,nGabors);
-    refPtX = w/2 + ecc;
+    refPtX = w/2 + eccPix;
     refPtY = h/2;
 
     % TARGET GABOR LOCATION
     dstRects(:,1) = CenterRectOnPoint(texrect, refPtX, refPtY)';
+    dstRectsMask(:,1) = CenterRectOnPoint(texrectMask, refPtX, refPtY)';
 
     % FLANKER GABORS LOCATION
     if crowding        
-        dstRects(:,2) = CenterRectOnPoint(texrect, refPtX + radialDist, refPtY)';
-        dstRects(:,3) = CenterRectOnPoint(texrect, refPtX + radialDist*cos(deg2rad(60)), refPtY - radialDist*sin(deg2rad(60)))';
-        dstRects(:,4) = CenterRectOnPoint(texrect, refPtX - radialDist*cos(deg2rad(60)), refPtY - radialDist*sin(deg2rad(60)))';
-        dstRects(:,5) = CenterRectOnPoint(texrect, refPtX - radialDist, refPtY)';
-        dstRects(:,6) = CenterRectOnPoint(texrect, refPtX - radialDist*cos(deg2rad(60)), refPtY + radialDist*sin(deg2rad(60)))';
-        dstRects(:,7) = CenterRectOnPoint(texrect, refPtX + radialDist*cos(deg2rad(60)), refPtY + radialDist*sin(deg2rad(60)))';
+        dstRects(:,2) = CenterRectOnPoint(texrect, refPtX + radialDistPix, refPtY)'; % rightmost
+        dstRects(:,3) = CenterRectOnPoint(texrect, refPtX + radialDistPix*cos(deg2rad(60)), refPtY - radialDistPix*sin(deg2rad(60)))';
+        dstRects(:,4) = CenterRectOnPoint(texrect, refPtX - radialDistPix*cos(deg2rad(60)), refPtY - radialDistPix*sin(deg2rad(60)))';
+        dstRects(:,5) = CenterRectOnPoint(texrect, refPtX - radialDistPix, refPtY)'; % leftmost
+        dstRects(:,6) = CenterRectOnPoint(texrect, refPtX - radialDistPix*cos(deg2rad(60)), refPtY + radialDistPix*sin(deg2rad(60)))';
+        dstRects(:,7) = CenterRectOnPoint(texrect, refPtX + radialDistPix*cos(deg2rad(60)), refPtY + radialDistPix*sin(deg2rad(60)))';
+        dstRectsMask(:,2) = CenterRectOnPoint(texrectMask, refPtX + radialDistPix, refPtY)'; % rightmost
+        dstRectsMask(:,3) = CenterRectOnPoint(texrectMask, refPtX + radialDistPix*cos(deg2rad(60)), refPtY - radialDistPix*sin(deg2rad(60)))';
+        dstRectsMask(:,4) = CenterRectOnPoint(texrectMask, refPtX - radialDistPix*cos(deg2rad(60)), refPtY - radialDistPix*sin(deg2rad(60)))';
+        dstRectsMask(:,5) = CenterRectOnPoint(texrectMask, refPtX - radialDistPix, refPtY)'; % leftmost
+        dstRectsMask(:,6) = CenterRectOnPoint(texrectMask, refPtX - radialDistPix*cos(deg2rad(60)), refPtY + radialDistPix*sin(deg2rad(60)))';
+        dstRectsMask(:,7) = CenterRectOnPoint(texrectMask, refPtX + radialDistPix*cos(deg2rad(60)), refPtY + radialDistPix*sin(deg2rad(60)))';
     end
 
     % ROTATION ANGLES
-    % 0 is vertical; angles go CCW
-    flankerAngle = [0 60 120]; 
+    % 0 is vertical ; angles go CW
+    flankerAngle = [0 120 240]; 
     if ~crowding
         rotAngles = tilt;
     elseif crowding == 1
@@ -142,19 +173,27 @@ for i = 1:nTrials
     trialITI = rand+.5;
     WaitSecs(trialITI) %jitters prestim interval between .5 and 1.5 seconds; inter-trial interval  
 
-    % DRAW FIXATION CROSS
-    fixCrossDimPix = 10; % size
+    % DRAW FIXATION CROSS OR TRIAL NUMBER
+    fixCrossDim = 0.5;
+    fixCrossDimPix = fixCrossDim*ppd; % size
     xCoords = [-fixCrossDimPix fixCrossDimPix 0 0];
     yCoords = [0 0 -fixCrossDimPix fixCrossDimPix];
     allCoords = [xCoords; yCoords];
     lineWidthPix = 1; % linewidth
-    Screen('DrawLines', win, allCoords,lineWidthPix, WhiteIndex(screenid), [w/2 h/2], 2);
-    Screen('Flip',win);
+    
+    if ~mod(nTrials-i,10)
+        DrawFormattedText(win, sprintf('%d',nTrials-i), 'Center', 'Center', [255 255 255]);
+    else
+        
+        Screen('DrawLines', win, allCoords,lineWidthPix, WhiteIndex(screenid), [w/2 h/2], 2);
+    end
+    
+    Screen('Flip',win); % PRESENT FIXATION ONLY
     WaitSecs(fixationDur)
       
     % DRAW GABOR PATCHES + FIXATION 
     Screen('DrawLines', win, allCoords,lineWidthPix, WhiteIndex(screenid), [w/2 h/2], 2);
-    Screen('DrawTextures', win, gabortex, [], dstRects, rotAngles, [], [], [], [], kPsychDontDoRotation, mypars);
+    Screen('DrawTextures', win, gabortex, [], dstRects, rotAngles, [], 0.5, [], [], 0);
     Screen('DrawingFinished', win);
     
     % CENTER GABORS
@@ -165,7 +204,14 @@ for i = 1:nTrials
         dstRects = CenterRectOnPointd(inrect .* repmat(scale,4,1), x, y);
     end
 
-    vbl = Screen('Flip', win);    
+    vbl = Screen('Flip', win); % PRESENT GABORS
+    WaitSecs(presentationDur)
+    
+    % FIXATION & MASK
+    Screen('DrawLines', win, allCoords,lineWidthPix, WhiteIndex(screenid), [w/2 h/2], 2);
+    Screen('FillOval', win, [], dstRectsMask);
+    Screen('Flip', win); % PRESENT MASK
+    
     trialStart = tic;   
     timedout = 1;
     
@@ -202,15 +248,15 @@ sca
 output.block = block;
 output.subj = subj;
 output.rsp = rsp;
-output.cnd = shuffledPairs;
+output.cnd = shuffledTrials;
 
-% if block ~= 0 % RE-ENABLE LATER
+if block ~= 0 % RE-ENABLE LATER
     save(sprintf('%s/%s_%d.mat',fileDir,subj,block),'output');
     if ~exist(sprintf('%s/Raw',fileDir))
         mkdir(sprintf('%s/Raw',fileDir))
     end
     save(sprintf('%s/Raw/%s_%d_raw.mat',fileDir,subj,block));
-% end
+end
 
 return
 

@@ -3,8 +3,7 @@ function percentCor = calcCor(data)
 % percentages
 % INPUT: nTrial x [crowding str, angle, correctness]
 
-% removes irrelevant first col, which tags crowding str
-data = data(:,[2 3]);
+data = data(:,[2 4]);
 
 % sum number of each condition
 uniqueCnd = unique(data(:,1));

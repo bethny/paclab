@@ -4,43 +4,34 @@ function trialInfo = getTrialInfo(blocks)
 % OUTPUT: 
 
 nBlocks = length(blocks);
+subjRT = [];
+subjRsp = [];
+subjStim = [];
 for b = 1:nBlocks
     curFile = load(blocks{b});
-    subjRt(b,:) = curFile.output.rsp.RT;
-    subjRsp(b,:) = curFile.output.rsp.keyName;
-    subjStim(:,:,b) = curFile.output.cnd; % 144 x 2 x 2        
+    subjRT = [subjRT; curFile.output.rsp.RT'];
+    subjRsp = [subjRsp; curFile.output.rsp.keyName'];
+    curStim = curFile.output.cnd(1:length(curFile.output.rsp.RT'),:); 
+    subjStim = [subjStim; curStim];
 end
-
-% extract actual stimuli used; [crowding str x angle x block] 
-relStim = subjStim(1:size(subjRt,2),:,:); % positive = left, neg = right
-
-% reshape to fit into 2D array
-intermediate = permute(relStim,[1 3 2]);
-vecRelStim = reshape(intermediate,[],size(relStim,2),1);
 
 % convert key codes to numbers
-vecRsp = reshape(subjRsp,1,[])';
-numRsp = zeros(size(vecRsp));
-numRsp(find(strcmp(vecRsp,'LeftArrow'))) = 1;
-numRsp(find(strcmp(vecRsp,'RightArrow'))) = 2;
-numRsp(find(strcmp(vecRsp,'none'))) = 0;
+numRsp = zeros(size(subjRsp));
+numRsp(strcmp(subjRsp,'LeftArrow')) = 1;
+numRsp(strcmp(subjRsp,'RightArrow')) = 2;
+numRsp(strcmp(subjRsp,'none')) = 0;
 
 % combine into trialInfo array: cols = crowding str, angle, resp, correctness
-trialInfo = cat(2,vecRelStim,numRsp,zeros(size(numRsp)));
-leftIdx = find(trialInfo(:,2) > 0);
-rightIdx = find(trialInfo(:,2) < 0);
-for l = 1:length(leftIdx)
-    if trialInfo(leftIdx(l),3) == 1
-        trialInfo(leftIdx(l),4) = 1;
+trialInfo = cat(2,subjStim,numRsp,zeros(size(numRsp)));
+for i = 1:length(trialInfo)
+    if trialInfo(i,2) < 0 && trialInfo(i,4) == 1 || trialInfo(i,2) > 0 && trialInfo(i,4) == 2
+        trialInfo(i,5) = 1;
+    else
+        trialInfo(i,5) = 0;
     end
 end
-for r = 1:length(rightIdx)
-    if trialInfo(rightIdx(r),3) == 2
-        trialInfo(rightIdx(r),4) = 1;
-    end
-end  
 
-% final trialInfo for output: cols = crowding str, angle, correctnes
-trialInfo = trialInfo(:,[1 2 4]);
+% final output: cols = crowding str, angle, hemifield, correctnes
+trialInfo = trialInfo(:,[1:3 5]);
 
 end

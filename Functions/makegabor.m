@@ -1,5 +1,12 @@
-function m=makegabor(gaborDimPix,freq,sigma,ori,VgaborDimPix,transformOut)
+function m=makegabor(gaborDimPix,freq,sigma,ori,VgaborDimPix)
     
+%%
+%     sf = 0.5;
+%     numCycles = gsize*sf;
+%     freq = numCycles/gaborDimPix;
+%     ori = 0;
+%     phase = 1;
+%
     res=[round(gaborDimPix) round(gaborDimPix) ];
     phase = 180*round(rand*2);%*CoinFlip(1,.5)-1;
     sc = sigma;
@@ -27,10 +34,12 @@ function m=makegabor(gaborDimPix,freq,sigma,ori,VgaborDimPix,transformOut)
 
     varScale=2*sc^2;
     m_tmp = (exp(x_factor/varScale+y_factor/varScale).*sinWave)';
-    if transformOut
-        m = m_tmp;
-    else
-        m = m_tmp*0.5*127.5 + 127.5;
-    end
+    m = m_tmp;
     
+    %
+%     close all
+%     image(m_tmp,'CDataMapping','scaled')
+%     colorbar
+%     colormap gray
+    %%
     save('makegabor.mat')
