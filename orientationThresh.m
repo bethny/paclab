@@ -5,7 +5,7 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015
 
-atLab = 1;
+atLab = 0;
 directories = {'~/code','~/Bethany/paclab'};
 addpath(genpath(directories{atLab+1}));
 
@@ -54,28 +54,27 @@ try
     trial = [0 0]; % zero trial counters 2 staircases
     stimulusReversal(2,20) = zeros; % matrix with stimulus setting at staircase reversals 
     flag = 0;
-    maxori = 45;
-    minori = 1; % vertical
-    ori = [minori maxori];    % orientation difference for 2 staircases / is this 2 starting points? unclear
-    delta = 3;          % how much to change signal & noise dot numbers at reversals?
-    fixationDur = .75;
-    presentationDur = .2;
+    maxori = 10;
+    minori = 0.5; % vertical
+    ori = [minori maxori];    % 2 starting points
+    delta = 1;          % how much to change signal at reversals\
+    presentationDur = 1;
     
 %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    fixRad = 0.7/2;  %radius of fixation spot
+    fixRad = 0.3;  %radius of fixation spot
     barWid = 0.4; % from bulakowski
     barLen = 4; % from bulakowski
-    ecc = 9;
+    ecc = 10;
     tfDist = 4.3; % distance between target + flanker
 %     orientation2 = [45 135];
 %     orin2 = 2;     % the number of orientation2
-    trialNumber = 350;
+    trialNumber = 200;
 %     time1 = 0.13;  % duration of the 1st grating
 %     time2 = 0.1;   % duration of ISI
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
-    pn = 2;     % the number of position
+%     pn = 2;     % the number of position
 
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -94,30 +93,16 @@ try
     dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx, yCen); % position the bars; target
     dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % above target
     dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % below target
-    
-%     orientList2 = 1:orin2;
-%     orientIndex2 = repmat(orientList2,1,trialNumber./orin2);
-%     n=randperm(trialNumber);
-%     oriIndex2 = orientIndex2(1,n); % what is this for?
 
     orientList = [-1 1]; % left vs right tilt
     orientIndex = repmat(orientList,1,trialNumber./2);
     n = randperm(trialNumber);
     oriIndex = orientIndex(1,n);
-
-%     conditionList1 = [1 1 2 2 2]; % same same diff diff diff?
-%     conditionIndex1 = repmat(conditionList1,1,trialNumber./5);
-%     n=randperm(trialNumber);
-%     conIndex = conditionIndex1(1,n);
     
     %initialize stuff for feedback 
-    
     FirstShow(1:trialNumber)=zeros;
-%     SecondShow(1:trialNumber)=zeros;
     stimulus_onset_time(1:trialNumber)=zeros;
     r1(1:trialNumber)=zeros;
-%     r2(1:trialNumber)=zeros;
-%     r3(1:trialNumber)=zeros;
     acc(1:trialNumber,1:2)=zeros;
     rt(1:trialNumber,1:2)=zeros;
     Keyresponse(1:trialNumber,1:2)=zeros;
@@ -131,7 +116,7 @@ try
     Screen('DrawText', w, 'Press right arrow if the center bar is tilted to the right (clockwise)',350, 500, [255, 255, 255]);
     Screen('Flip', w);
     KbWait;
-    while KbCheck; end;
+    while KbCheck; end
     
     activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
@@ -140,15 +125,9 @@ try
 
     while flag == 0 % flag = 1 means that we've hit the 45º upper limit
         trials = trials + 1;
-%         if conIndex(trials)==2 % if ori are DIFFERENT, use up or down staircases (WhichStair = 1 || 2)
-            WhichStair = randi(2); % which staircase to use
-            stdir = stairdir(WhichStair);
-            stori = ori(WhichStair);
-%         else % if ori are SAME, use staircase 3? stori = 0
-%             WhichStair = 3; % which staircase to use
-%             stori=0;
-%             stdir=-1;
-%         end
+        WhichStair = randi(2); % which staircase to use
+        stdir = stairdir(WhichStair);
+        stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
                 
         priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
@@ -172,6 +151,8 @@ try
         % draw stimulus display
         rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
+        Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
+            30, 30, [255, 255, 255]);
         Screen('FillOval', w,white,FIXATION_POSITION,10);
         
         Screen('Flip',w);
@@ -194,7 +175,8 @@ try
                     ShowCursor;
                 end
 
-                if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && responseKey(KbName('LeftArrow'))
+                if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
+                        responseKey(KbName('LeftArrow'))
                     acc(trial(WhichStair),WhichStair) = 1;
                     rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
                     Keyresponse(trial(WhichStair),WhichStair)=find(responseKey); 
@@ -205,7 +187,7 @@ try
                 end
                 KbReleaseWait;              
                 keypressed=1;
-            end;
+            end
         end    
         
        %staircase stuff        
@@ -222,12 +204,13 @@ try
                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value (stairStep) at reversal
                end
                %change stimulus to make stimulus harder
-               if ori(WhichStair) <= 10
+               if ori(WhichStair) <= 5
                    ori(WhichStair) = ori(WhichStair) - delta;
                else
                    ori(WhichStair) = ori(WhichStair) - 2*delta;
                end
-               if ori(WhichStair) < minori, ori(WhichStair) = minori;
+               if ori(WhichStair) < minori
+                   ori(WhichStair) = minori;
                end % can't be negative
            end
            
@@ -240,21 +223,25 @@ try
                stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus @ this reversal
            end
            %change stimulus to make stimulus easier
-           if ori(WhichStair) <= 10
-               ori(WhichStair)=ori(WhichStair)+delta;
+           if ori(WhichStair) <= 5
+               ori(WhichStair)=ori(WhichStair) + delta;
            else
                ori(WhichStair) = ori(WhichStair) + 2*delta;
            end
-           if ori(WhichStair) > maxori, ori(WhichStair) = maxori; 
+           if ori(WhichStair) > maxori
+               ori(WhichStair) = maxori; 
            end % max of 45
        end
-       dlmwrite(thresholdFile,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
+%        dlmwrite(thresholdFile,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
+%             stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
        
        ListenChar(0); %disables keyboard and flushes.
        ListenChar(2); %enables keyboard, no output to command window
        
        % test whether to end experiment
-       if (nReverse(1) > 9 &&  nReverse(2) > 9) || trial(1) > 100 || trial(2) > 100; flag = 1; end
+       if (nReverse(1) > 9 &&  nReverse(2) > 9) || trial(1) > 100 || trial(2) > 100 
+           flag = 1; 
+       end
 %        save('threshold.mat')
     end
     

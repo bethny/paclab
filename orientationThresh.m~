@@ -5,7 +5,7 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015
 
-atLab = 1;
+atLab = 0;
 directories = {'~/code','~/Bethany/paclab'};
 addpath(genpath(directories{atLab+1}));
 
@@ -29,7 +29,7 @@ try
     WhichScreen = max(Screen('Screens'));
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
-    PsychDebugWindowConfiguration(0,0.5)
+    PsychDebugWindowConfiguration(0,0.75)
     
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
 %     MyCLUT = load('gammaTable1.mat');
@@ -127,14 +127,14 @@ try
     % tell subjects what to look for
     % wait for keypress to continue
     KbName('UnifyKeyNames');
-    activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
-    RestrictKeysForKbCheck(activeKeys);
-    srcRect=[];
     Screen('DrawText', w, 'Press left arrow if the center bar is tilted to the left (counterclockwise)', 350, 400, [255, 255, 255]); 
     Screen('DrawText', w, 'Press right arrow if the center bar is tilted to the right (clockwise)',350, 500, [255, 255, 255]);
     Screen('Flip', w);
     KbWait;
-    while KbCheck; end;
+    while KbCheck; end
+    
+    activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
+    RestrictKeysForKbCheck(activeKeys);
 
 %% main experiment   
 
@@ -157,8 +157,11 @@ try
         % show fixation cross
         Screen('FillRect', w, grey);
         % Draw fixation to indicate the start of the trial       
-        Screen('FillOval', w, white,FIXATION_POSITION,10);     
-        fixShow = Screen('Flip',w);
+        Screen('FillOval', w, white,FIXATION_POSITION,10); 
+        Screen('Flip',w);
+        WaitSecs(markerWait(trials));
+        
+%         fixShow = Screen('Flip',w);      
 %         % Loop to ensure they stay at the marker for however long "markerWait" is
 %         markerTime = tic;
 %         while (toc(markerTime) < markerWait(1,trials))     
@@ -171,13 +174,15 @@ try
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
         Screen('FillOval', w,white,FIXATION_POSITION,10);
         
-        FirstShow(trials) = Screen('Flip',w,fixShow+markerWait(trials));
+        Screen('Flip',w);
+        WaitSecs(presentationDur);
+        
+%         FirstShow(trials) = Screen('Flip',w,fixShow+markerWait(trials));
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
         
-%         Screen('FillRect', w, grey);
-        Screen('FillOval', w, white,FIXATION_POSITION,10); 
-        ISITime(trials) = Screen('Flip',w,FirstShow(trials)+presentationDur);
-%         Screen('Flip',w);
+        Screen('FillOval', w, white,FIXATION_POSITION,10);
+        Screen('Flip',w);
+%         ISITime(trials) = Screen('Flip',w,FirstShow(trials)+presentationDur);
        
         keypressed = 0;
         while (keypressed==0) 
@@ -200,7 +205,7 @@ try
                 end
                 KbReleaseWait;              
                 keypressed=1;
-            end;
+            end
         end    
         
        %staircase stuff        
