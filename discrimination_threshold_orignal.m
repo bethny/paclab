@@ -1,4 +1,4 @@
-                                                                                                                                                                                 function  discrimination_threshold_single
+function  discrimination_threshold_orignal
 %Makes a double staircase for Gabor orientation discrimination (one starts 
 %at 0 degree difference, the other 10 degree) and after 10 reversals, 
 %should show us at what point signal dots matter to the user. 
@@ -65,8 +65,8 @@ try
     vsize=4;      %size of the visible grating
     linew=6;
     degree=8.5;    %distance between center and grating
-    key1=90;     %key for 1
-    key2=88;     %key for 2
+    key1=90;     %key for 1 / z
+    key2=88;     %key for 2 / x
     sf=1;       %spatial frequency
     contrast=1;   %contrast
     orientation2=[45 135];
@@ -186,6 +186,7 @@ try
         % Draw fixation to indicate the start of the trial       
         Screen('FillOval', w, white,FIXATION_POSITION,10);     
         Screen('Flip',w);
+        
         % Loop to ensure they stay at the marker for however long "markerWait" is
         markerTime = tic;
         while (toc(markerTime) < markerWait(1,trials))
