@@ -5,26 +5,26 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015
 
-atLab = 0;
+atLab = 1;
 directories = {'~/code','~/Bethany/paclab'};
 addpath(genpath(directories{atLab+1}));
 
 try
-    %rand('twister', sum(100*clock)); % seed RNG
-    VIEWING_DISTANCE_CM = 52;%57;
-    MONITOR_WIDTH_CM = 44;%35;
+    VIEWING_DISTANCE_CM = 52;
+    MONITOR_WIDTH_CM = 44;
     
 %% subject information %%%%%%%%%%%%%%%%%%%    
     KbName('UnifyKeyNames')
     subjNum = input('\n Enter subject number: ');
     %Create a directory for this subject's data
-%     oripath=pwd;
-%     pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',subjNum,filesep);
-%     mkdir(pathdata);
-%     cd(pathdata);
-%     pathdata = pwd;
-%     thresholdFile = strcat(pathdata,filesep,subjNum,'_threshold.txt');
-%     cd(oripath);
+    oripath=pwd;
+    pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',subjNum,filesep);
+    mkdir(pathdata);
+    cd(pathdata);
+    pathdata = pwd;
+    thresholdFile = strcat(pathdata,filesep,subjNum,'_threshold.txt');
+    cd(oripath);
+    
 %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     WhichScreen = max(Screen('Screens'));
     white = WhiteIndex(WhichScreen);
@@ -67,15 +67,12 @@ try
     barLen = 4; % from bulakowski
     ecc = 10;
     tfDist = 4.3; % distance between target + flanker
-%     orientation2 = [45 135];
-%     orin2 = 2;     % the number of orientation2
     trialNumber = 200;
 %     time1 = 0.13;  % duration of the 1st grating
 %     time2 = 0.1;   % duration of ISI
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
-%     pn = 2;     % the number of position
-
+    
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
     eccPx = round(ecc*ppd); 
@@ -232,8 +229,8 @@ try
                ori(WhichStair) = maxori; 
            end % max of 45
        end
-%        dlmwrite(thresholdFile,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
-%             stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
+       dlmwrite(thresholdFile,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
+            stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
        
        ListenChar(0); %disables keyboard and flushes.
        ListenChar(2); %enables keyboard, no output to command window
@@ -242,11 +239,11 @@ try
        if (nReverse(1) > 9 &&  nReverse(2) > 9) || trial(1) > 100 || trial(2) > 100 
            flag = 1; 
        end
-%        save('threshold.mat')
+       save('threshold.mat')
     end
     
     Screen ('CloseAll');
-     ShowCursor;
+	ShowCursor;
     %Priority(0);
 
 %--------- DONE --------------------
@@ -255,22 +252,22 @@ try
     sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
     sumReversal(2) = sum(stimulusReversal(2,4:nReverse(2)));
    % means  
-     stair1mean = sumReversal(1)/(nReverse(1)-3);
-     stair2mean = sumReversal(2)/(nReverse(2)-3);
+    stair1mean = sumReversal(1)/(nReverse(1)-3);
+    stair2mean = sumReversal(2)/(nReverse(2)-3);
 
    % standard deviation
-     StandardDev1 = std(stimulusReversal(1,4:nReverse(1)));
-     StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
+    StandardDev1 = std(stimulusReversal(1,4:nReverse(1)));
+    StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
 
-     ListenChar(1); % Turn keyboard output to command window on
+    ListenChar(1); % Turn keyboard output to command window on
 
-%      pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',subjNum,filesep);
-%      mkdir(pathdata);
-%      cd(pathdata);
-%      save('threshold.mat')
-%      plot(stimulusReversal(1,1:nReverse(1)));hold on;
-%      plot(stimulusReversal(2,1:nReverse(2)));hold on;
-%      disp 
+    pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',subjNum,filesep);
+    mkdir(pathdata);
+    cd(pathdata);
+    save('threshold.mat')
+    plot(stimulusReversal(1,1:nReverse(1)));hold on;
+    plot(stimulusReversal(2,1:nReverse(2)));hold on;
+    disp 
 catch psychlasterror
     Screen ('CloseAll');
     close all;
