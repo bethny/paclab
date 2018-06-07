@@ -1,13 +1,12 @@
-
 %Makes a double staircase for Gabor orientation discrimination (one starts 
 %at 0 degree difference, the other 10 degree) and after 10 reversals, 
 %should show us at what point signal dots matter to the user. 
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015
 
-atLab = 1;
-directories = {'~/code','~/Bethany/paclab'};
-addpath(genpath(directories{atLab+1}));
+% atLab = 1;
+% directories = {'~/code','~/Bethany/paclab'};
+% addpath(genpath(directories{atLab+1}));
 
 try
     VIEWING_DISTANCE_CM = 52;
@@ -16,24 +15,26 @@ try
 %% subject information %%%%%%%%%%%%%%%%%%%    
     KbName('UnifyKeyNames')
     subjNum = input('\n Enter subject number: ');
-    %Create a directory for this subject's data
-    oripath=pwd;
-    pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',subjNum,filesep);
-    mkdir(pathdata);
-    cd(pathdata);
-    pathdata = pwd;
-    thresholdFile = strcat(pathdata,filesep,subjNum,'_threshold.txt');
-    cd(oripath);
+    blockNum = input('\n Enter block number: ');
+    %Create a directory for this subject's data if not a practice trial
+    if blockNum
+        oripath = pwd;
+        pathdata = strcat(pwd,filesep,'Subject_folders',filesep,sprintf('%d_block%d',subjNum,blockNum),filesep);
+        mkdir(pathdata);
+        cd(pathdata);
+        pathdata = pwd;
+        thresholdFile = strcat(pathdata,filesep,num2str(subjNum),'_threshold.txt');
+        cd(oripath);
+    end
     
 %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     WhichScreen = max(Screen('Screens'));
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
-    PsychDebugWindowConfiguration(0,0.75)
     
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
-%     MyCLUT = load('gammaTable1.mat');
-%     Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
+    MyCLUT = load('gammaTable1.mat');
+    Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
     [xCen, yCen] = RectCenter(winRect);
     [swidth, sheight]=Screen('WindowSize', WhichScreen);
     screenCenter = [xCen yCen];
@@ -58,20 +59,23 @@ try
     minori = 0.5; % vertical
     ori = [minori maxori];    % 2 starting points
     delta = 1;          % how much to change signal at reversals\
-    presentationDur = 1;
+    presentationDur = .2;
     
 %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     fixRad = 0.3;  %radius of fixation spot
-    barWid = 0.4; % from bulakowski
-    barLen = 4; % from bulakowski
+    barWid = 0.3; % from bulakowski
+    barLen = 2.5; % from bulakowski
     ecc = 10;
     tfDist = 4.3; % distance between target + flanker
-    trialNumber = 200;
-%     time1 = 0.13;  % duration of the 1st grating
-%     time2 = 0.1;   % duration of ISI
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
+    
+    if blockNum % if not practice
+        trialNumber = 200;
+    else
+        trialNumber = 20;
+    end
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -109,9 +113,7 @@ try
     % tell subjects what to look for
     % wait for keypress to continue
     KbName('UnifyKeyNames');
-    Screen('DrawText', w, 'Press left arrow if the center bar is tilted to the left (counterclockwise)', 350, 400, [255, 255, 255]); 
-    Screen('DrawText', w, 'Press right arrow if the center bar is tilted to the right (clockwise)',350, 500, [255, 255, 255]);
-    Screen('Flip', w);
+    crowdingInstructions(block, w)
     KbWait;
     while KbCheck; end
     
@@ -135,17 +137,10 @@ try
         % Draw fixation to indicate the start of the trial       
         Screen('FillOval', w, white,FIXATION_POSITION,10); 
         Screen('Flip',w);
-        WaitSecs(markerWait(trials));
-        
-%         fixShow = Screen('Flip',w);      
-%         % Loop to ensure they stay at the marker for however long "markerWait" is
-%         markerTime = tic;
-%         while (toc(markerTime) < markerWait(1,trials))     
-%         end     
-        
-        r1(trials) = oriIndex(trials)*ori(WhichStair);
+        WaitSecs(markerWait(trials));   
         
         % draw stimulus display
+        r1(trials) = oriIndex(trials)*ori(WhichStair);
         rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
         Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
@@ -155,23 +150,19 @@ try
         Screen('Flip',w);
         WaitSecs(presentationDur);
         
-%         FirstShow(trials) = Screen('Flip',w,fixShow+markerWait(trials));
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
         
         Screen('FillOval', w, white,FIXATION_POSITION,10);
         Screen('Flip',w);
-%         ISITime(trials) = Screen('Flip',w,FirstShow(trials)+presentationDur);
-       
+    
         keypressed = 0;
         while (keypressed==0) 
             [keyIsDown, secs, responseKey] = KbCheck; 
-
             if keyIsDown
-                if responseKey(KbName('ESCAPE'))
+                if responseKey(KbName('q'))
                     Screen('CloseAll');
                     ShowCursor;
                 end
-
                 if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
                         responseKey(KbName('LeftArrow'))
                     acc(trial(WhichStair),WhichStair) = 1;
@@ -229,9 +220,7 @@ try
                ori(WhichStair) = maxori; 
            end % max of 45
        end
-       dlmwrite(thresholdFile,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
-            stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
-       
+            
        ListenChar(0); %disables keyboard and flushes.
        ListenChar(2); %enables keyboard, no output to command window
        
@@ -239,7 +228,11 @@ try
        if (nReverse(1) > 9 &&  nReverse(2) > 9) || trial(1) > 100 || trial(2) > 100 
            flag = 1; 
        end
-       save('threshold.mat')
+       if blockNum
+           dlmwrite(thresholdFile,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
+                stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
+           save('threshold.mat')
+       end
     end
     
     Screen ('CloseAll');
@@ -248,6 +241,7 @@ try
 
 %--------- DONE --------------------
 % rudimentary data analysis
+if blockNum
     % sum stimulus values at each reversal for separate staircases
     sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
     sumReversal(2) = sum(stimulusReversal(2,4:nReverse(2)));
@@ -261,13 +255,14 @@ try
 
     ListenChar(1); % Turn keyboard output to command window on
 
-    pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',subjNum,filesep);
+    pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',num2str(subjNum),filesep);
     mkdir(pathdata);
     cd(pathdata);
     save('threshold.mat')
     plot(stimulusReversal(1,1:nReverse(1)));hold on;
     plot(stimulusReversal(2,1:nReverse(2)));hold on;
-    disp 
+end
+
 catch psychlasterror
     Screen ('CloseAll');
     close all;
@@ -278,4 +273,3 @@ catch psychlasterror
 
 end   % try catch
 % end   % function
-
