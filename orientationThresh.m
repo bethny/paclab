@@ -25,6 +25,7 @@ try
         pathdata = pwd;
         thresholdFile = strcat(pathdata,filesep,num2str(subjNum),'_threshold.txt');
         cd(oripath);
+        addpath(genpath(sprintf('%s/Functions',oripath)));
     end
     
 %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -33,8 +34,8 @@ try
     grey = GrayIndex(WhichScreen);
     
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
-    MyCLUT = load('gammaTable1.mat');
-    Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
+%     MyCLUT = load('gammaTable1.mat');
+%     Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
     [xCen, yCen] = RectCenter(winRect);
     [swidth, sheight]=Screen('WindowSize', WhichScreen);
     screenCenter = [xCen yCen];
@@ -49,17 +50,16 @@ try
                         
 %% staircase value                      
     trials = 0; % count # trials overall?
-    nStaircases = 4; % # of staircases
-    stairdir = repmat([1 0],1,nStaircases/2);  % staircase 1 starts up (1) & 2 starts down (0) direction
-    nReverse = zeros(1,nStaircases);  % counts the number of reversals each staircase
-    stairCorrect = zeros(1,nStaircases);  % counts # correct in a row each staircase
-    trial = zeros(1,nStaircases); % zero trial counters 2 staircases
-    stimulusReversal(nStaircases,20) = zeros; % matrix with stimulus setting at staircase reversals 
+    stairdir = [1 0];  % staircase 1 starts up (1) & 2 starts down (0) direction
+    nReverse = [0 0];  % counts the number of reversals each staircase
+    stairCorrect = [0 0];  % counts # correct in a row each staircase
+    trial = [0 0]; % zero trial counters 2 staircases
+    stimulusReversal(2,20) = zeros; % matrix with stimulus setting at staircase reversals 
     flag = 0;
     maxori = 10;
     minori = 0.5; % vertical
-    ori = [minori maxori -minori -maxori]; % 4 starting points
-    delta = [1 1 -1 -1]; % how much to change signal at reversals\
+    ori = [minori maxori];    % 2 starting points
+    delta = 0.5;          % how much to change signal at reversals\
     presentationDur = .2;
     
 %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -67,7 +67,7 @@ try
     fixRad = 0.3;  %radius of fixation spot
     barWid = 0.3; % from bulakowski
     barLen = 2.5; % from bulakowski
-    ecc = 10;
+    ecc = 15;
     tfDist = 4.3; % distance between target + flanker
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
@@ -96,17 +96,17 @@ try
     dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % above target
     dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % below target
 
-%     orientList = [-1 1]; % left vs right tilt
-%     orientIndex = repmat(orientList,1,trialNumber./2);
-%     n = randperm(trialNumber);
-%     oriIndex = orientIndex(1,n);
+    orientList = [-1 1]; % left vs right tilt
+    orientIndex = repmat(orientList,1,trialNumber./2);
+    n = randperm(trialNumber);
+    oriIndex = orientIndex(1,n);
     
     %initialize stuff for feedback 
     FirstShow(1:trialNumber)=zeros;
     stimulus_onset_time(1:trialNumber)=zeros;
     r1(1:trialNumber)=zeros;
-    acc(1:trialNumber,1:4)=zeros;
-    rt(1:trialNumber,1:4)=zeros;
+    acc(1:trialNumber,1:2)=zeros;
+    rt(1:trialNumber,1:2)=zeros;
     Keyresponse(1:trialNumber,1:2)=zeros;
     
 %% instruction
@@ -114,7 +114,7 @@ try
     % tell subjects what to look for
     % wait for keypress to continue
     KbName('UnifyKeyNames');
-    crowdingInstructions(block, w)
+    crowdingInstructions(blockNum, w)
     KbWait;
     while KbCheck; end
     
@@ -123,9 +123,9 @@ try
 
 %% main experiment   
 
-    while flag == 0 % flag = 1 means that we've hit the 45º upper limit
+    while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the upper limit
         trials = trials + 1;
-        WhichStair = randi(4); % which staircase to use
+        WhichStair = randi(2); % which staircase to use
         stdir = stairdir(WhichStair);
         stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
@@ -141,12 +141,11 @@ try
         WaitSecs(markerWait(trials));   
         
         % draw stimulus display
-%         r1(trials) = oriIndex(trials)*ori(WhichStair);
-        r1(trials) = delta(WhichStair)*ori(WhichStair); % mutiplying by delta (1 || -1) makes it the right sign
+        r1(trials) = oriIndex(trials)*ori(WhichStair);
         rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
-        Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
-            30, 30, [255, 255, 255]);
+%         Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
+%             30, 30, [255, 255, 255]);
         Screen('FillOval', w,white,FIXATION_POSITION,10);
         
         Screen('Flip',w);
@@ -168,13 +167,11 @@ try
                 if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
                         responseKey(KbName('LeftArrow'))
                     acc(trial(WhichStair),WhichStair) = 1;
-                    rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
-                    Keyresponse(trial(WhichStair),WhichStair)=find(responseKey); 
                 else
-                    acc(trial(WhichStair),WhichStair) = 0;
-                    rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
-                    Keyresponse(trial(WhichStair),WhichStair)=find(responseKey); 
+                    acc(trial(WhichStair),WhichStair) = 0;  
                 end
+                rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
+                Keyresponse(trial(WhichStair),WhichStair)=find(responseKey); 
                 KbReleaseWait;              
                 keypressed=1;
             end
@@ -194,13 +191,13 @@ try
                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value (stairStep) at reversal
                end
                %change stimulus to make stimulus harder
-               if abs(ori(WhichStair)) <= 5 % DOUBLE CHECK THIS SECTION
-                   ori(WhichStair) = ori(WhichStair) - delta(WhichStair);
+               if ori(WhichStair) <= 5
+                   ori(WhichStair) = ori(WhichStair) - delta;
                else
-                   ori(WhichStair) = ori(WhichStair) - 2*delta(WhichStair);
+                   ori(WhichStair) = ori(WhichStair) - 2*delta;
                end
-               if abs(ori(WhichStair)) < minori
-                   ori(WhichStair) = minori*delta(WhichStair); % mutliplying by delta makes it the correct sign
+               if ori(WhichStair) < minori
+                   ori(WhichStair) = minori;
                end % can't be negative
            end
            
@@ -213,13 +210,13 @@ try
                stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus @ this reversal
            end
            %change stimulus to make stimulus easier
-           if abs(ori(WhichStair)) <= 5
-               ori(WhichStair) = ori(WhichStair) + delta(WhichStair);
+           if ori(WhichStair) <= 5
+               ori(WhichStair)=ori(WhichStair) + delta;
            else
-               ori(WhichStair) = ori(WhichStair) + 2*delta(WhichStair);
+               ori(WhichStair) = ori(WhichStair) + 2*delta;
            end
-           if abs(ori(WhichStair)) > maxori
-               ori(WhichStair) = maxori*delta(WhichStair); % multiplying by delta makes it the correct sign
+           if ori(WhichStair) > maxori
+               ori(WhichStair) = maxori; 
            end % max of 45
        end
             
@@ -256,11 +253,11 @@ if blockNum
     StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
 
     ListenChar(1); % Turn keyboard output to command window on
-
-    pathdata=strcat(pwd,filesep,'Subject_folders',filesep,'grasping_',num2str(subjNum),filesep);
-    mkdir(pathdata);
-    cd(pathdata);
-    save('threshold.mat')
+    
+%     pathdata = strcat(pwd,filesep,'Subject_folders',filesep,sprintf('%d_block%d',subjNum,blockNum),filesep);
+%     mkdir(pathdata);
+%     cd(pathdata);
+%     save('threshold.mat')
     plot(stimulusReversal(1,1:nReverse(1)));hold on;
     plot(stimulusReversal(2,1:nReverse(2)));hold on;
 end

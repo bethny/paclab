@@ -19,13 +19,13 @@ if currBlock == 0
         'If you respond incorrectly, you will hear a lower beep. \n\n\n'...  
         'If you need to exit the trial, press q. \n\n'...
         'We will start with some practice trials. \n\n'...
-        'Press the RIGHT ARROW KEY to continue.'];
+        'Press ENTER to continue.'];
 elseif currBlock == 1
     instText = ['The practice block is now complete.\n\n'...
                 'There will be a number of experimental blocks with breaks in between.\n\n'...                
-                'Press the RIGHT ARROW KEY to continue.\n\n'];
+                'Press ENTER to continue.\n\n'];
 else
-    instText = 'Press the RIGHT ARROW KEY to continue.\n\n';
+    instText = 'Press ENTER to continue.\n\n';
 end
 DrawFormattedText(w, instText, 'Center', 'Center', [255 255 255]);
 
