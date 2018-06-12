@@ -33,7 +33,6 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    PsychDebugWindowConfiguration(1,1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('gammaTable1.mat');
@@ -102,13 +101,9 @@ try
     dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx, yCen); % position the bars; target
     dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % above target
     dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % below target
-%     Screen('DrawTextures', w, barTexVert, [], dstRects, [0 0 4]);
-%     Screen('Flip',w);
-
     
     maskBar = ones(maskBarLenPx, maskBarWidPx);
     maskBarTex = Screen('MakeTexture', w, maskBar);
-%     lowBound = dstRects(4,
 
     orientList = [-1 1]; % left vs right tilt
     orientIndex = repmat(orientList,1,trialNumber./2);
@@ -156,8 +151,7 @@ while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the uppe
     
     % draw stimulus display
     r1(trials) = oriIndex(trials)*ori(WhichStair);
-%     rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
-    rotAngles = [0 0 0];
+    rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
     Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
     % Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
     %     30, 30, [255, 255, 255]);

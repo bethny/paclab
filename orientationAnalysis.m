@@ -1,5 +1,7 @@
-% parentDir = '~/Bethany/paclab';
-parentDir = '~/code/pac/paclab';
+clear all
+close all
+parentDir = '~/Bethany/paclab';
+% parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 results = load(sprintf('%s/Subject_folders/1_block1/threshold.mat',parentDir));
 block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
