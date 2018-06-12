@@ -1,4 +1,5 @@
-parentDir = '~/Bethany/paclab';
+% parentDir = '~/Bethany/paclab';
+parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 results = load(sprintf('%s/Subject_folders/1_block1/threshold.mat',parentDir));
 block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
@@ -19,7 +20,6 @@ StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
 plot(stimulusReversal(1,1:nReverse(1)));hold on;
 plot(stimulusReversal(2,1:nReverse(2)));hold on;
 
-%%
 %% Plotting the staircase
 %
 % It's useful to look at how the intensity (coherence) values changed from
@@ -29,7 +29,7 @@ plot(stimulusReversal(2,1:nReverse(2)));hold on;
 
 figure(1)
 clf
-stairs(log(results.intensity));
+stairs(log(results.r1));
 
 %%
 % Let's get fancy and plot green and red symbols where trials had correct
@@ -59,7 +59,8 @@ ylabel('Coherence');
 % data point.  (This wasn't necessary for constant stimuli.  Why not?)
 
 % intensities = unique(results.intensity);
-intensities = unique(results.r1); % all the dif intensity values, or ori for me
+intensities = unique(abs(results.r1)); % all the dif intensity values, or ori
+intensities = intensities(2:end);
 acc = results.acc;
 
 %
@@ -70,9 +71,9 @@ nCorrect = zeros(1,length(intensities));
 nTrials = zeros(1,length(intensities));
 
 for i = 1:length(intensities)
-    id = results.r1 == intensities(i) & ~isnan(results.acc);
+    id = abs(results.r1) == intensities(i);
     nTrials(i) = sum(id);
-    nCorrect(i) = sum(results.response(id));
+    nCorrect(i) = sum(results.acc(id));
 end
 
 pCorrect = nCorrect./nTrials;
@@ -84,13 +85,31 @@ clf
 hold on
  plot(log(intensities),100*pCorrect,'-','MarkerFaceColor','b');
  %loop through each intensity so each data point can have it's own size.
-for i=1:length(intensities);
+for i=1:length(intensities)
     sz = nTrials(i)+2;
     plot(log(intensities(i)),100*pCorrect(i),'ko-','MarkerFaceColor','b','MarkerSize',sz);
 end
 
 set(gca,'XTick',log(intensities));
 logx2raw;
+set(gca,'YLim',[0,100]);
+xlabel('Coherence');
+ylabel('Percent Correct');
+
+%% NON LOG
+
+figure(2)
+clf
+hold on
+plot(intensities,100*pCorrect,'-','MarkerFaceColor','b');
+
+%loop through each intensity so each data point can have it's own size.
+for i=1:length(intensities)
+    sz = nTrials(i)+2;
+    plot(intensities(i),100*pCorrect(i),'ko-','MarkerFaceColor','b','MarkerSize',sz);
+end
+
+set(gca,'XTick',intensities);
 set(gca,'YLim',[0,100]);
 xlabel('Coherence');
 ylabel('Percent Correct');
