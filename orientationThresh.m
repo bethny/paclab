@@ -64,7 +64,7 @@ try
     
 %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    fixRad = 0.3;  %radius of fixation spot
+    fixRad = 0.2;  %radius of fixation spot
     barWid = 0.3; % from bulakowski
     barLen = 2.5; % from bulakowski
     maskBarWid = 0.15;
@@ -108,7 +108,6 @@ try
     lowerBound = dstRects(4,3);
     leftBound = dstRects(1,3);
     rightBound = dstRects(3,2); 
-    
     nRow = 4; 
     nCol = 4; 
     
@@ -172,7 +171,7 @@ while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the uppe
     
     % draw mask display
     for i = 1:length(point)
-        maskDstRects(:,i) = CenterRectOnPoint(maskTexrect, point(i,1)+randi(20), point(i,2)+randi(20));
+        maskDstRects(:,i) = CenterRectOnPoint(maskTexrect, point(i,1)+randi([-30 30]), point(i,2)+randi([-30 30]));
     end
     maskRotAngles = randi(360,1,length(point));
     Screen('FillOval', w,white,FIXATION_POSITION,10);
