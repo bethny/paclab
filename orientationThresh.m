@@ -4,10 +4,6 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015
 
-% atLab = 1;
-% directories = {'~/code','~/Bethany/paclab'};
-% addpath(genpath(directories{atLab+1}));
-
 try
     VIEWING_DISTANCE_CM = 52;
     MONITOR_WIDTH_CM = 44;
@@ -64,14 +60,15 @@ try
     ori = [minori maxori];    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals\
     presentationDur = .2;
+    maskDur = 1;
     
 %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     fixRad = 0.3;  %radius of fixation spot
     barWid = 0.3; % from bulakowski
     barLen = 2.5; % from bulakowski
-    maskBarWid = 0.1;
-    maskBarLen = 1;
+    maskBarWid = 0.15;
+    maskBarLen = 1.5;
     ecc = 15;
     tfDist = 4.3; % distance between target + flanker
     markerWaitList = [0.75, 1, 1.25];
@@ -102,14 +99,22 @@ try
     dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx, yCen); % position the bars; target
     dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % above target
     dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % below target
-%     Screen('DrawTextures', w, barTexVert, [], dstRects, [0 0 4]);
-%     Screen('Flip',w);
-
     
     maskBar = ones(maskBarLenPx, maskBarWidPx);
     maskBarTex = Screen('MakeTexture', w, maskBar);
-%     lowBound = dstRects(4,
-
+    maskTexrect = Screen('Rect', maskBarTex); % convert into rect
+    
+    upperBound = dstRects(2,2);
+    lowerBound = dstRects(4,3);
+    leftBound = dstRects(1,3);
+    rightBound = dstRects(3,2); 
+    
+    nRow = 4; 
+    nCol = 4; 
+    
+    point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);  
+    
+    %%
     orientList = [-1 1]; % left vs right tilt
     orientIndex = repmat(orientList,1,trialNumber./2);
     n = randperm(trialNumber);
@@ -156,23 +161,30 @@ while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the uppe
     
     % draw stimulus display
     r1(trials) = oriIndex(trials)*ori(WhichStair);
-%     rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
-    rotAngles = [0 0 0];
+    rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
     Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
     % Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
     %     30, 30, [255, 255, 255]);
-    Screen('FillOval', w,white,FIXATION_POSITION,10);
-    
+    Screen('FillOval', w,white,FIXATION_POSITION,10);   
     Screen('Flip',w);
+    stimulus_onset_time(trials) = tic; % Mark the time when the display went up
     WaitSecs(presentationDur);
     
-    stimulus_onset_time(trials) = tic; % Mark the time when the display went up
+    % draw mask display
+    for i = 1:length(point)
+        maskDstRects(:,i) = CenterRectOnPoint(maskTexrect, point(i,1)+randi(20), point(i,2)+randi(20));
+    end
+    maskRotAngles = randi(360,1,length(point));
+    Screen('FillOval', w,white,FIXATION_POSITION,10);
+    Screen('DrawTextures', w, maskBarTex, [], maskDstRects, maskRotAngles);
+    Screen('Flip',w);
+    WaitSecs(maskDur);
     
     Screen('FillOval', w, white,FIXATION_POSITION,10);
     Screen('Flip',w);
     
     keypressed = 0;
-    while (keypressed==0)
+    while ~keypressed
         [keyIsDown, secs, responseKey] = KbCheck;
         if keyIsDown
             if responseKey(KbName('q'))
@@ -188,7 +200,7 @@ while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the uppe
             rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
             Keyresponse(trial(WhichStair),WhichStair)=find(responseKey);
             KbReleaseWait;
-            keypressed=1;
+            keypressed = 1;
         end
     end
     
