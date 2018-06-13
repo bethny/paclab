@@ -29,7 +29,6 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    PsychDebugWindowConfiguration(1,1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('gammaTable1.mat');
@@ -38,7 +37,7 @@ try
     [xCen, yCen] = RectCenter(winRect);
     [swidth, sheight]=Screen('WindowSize', WhichScreen);
     screenCenter = [xCen yCen];
-    screenInfo.center=screenCenter;
+    screenInfo.center = screenCenter;
     degPerPixel = atan((MONITOR_WIDTH_CM/2)/VIEWING_DISTANCE_CM) * (180/pi) * (2 / swidth);
     ppd = 1 / degPerPixel;
     screenInfo.PPD = ppd;
@@ -60,7 +59,7 @@ try
     ori = [minori maxori];    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals\
     presentationDur = .2;
-    maskDur = 1;
+    maskDur = .1;
     
 %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
