@@ -68,7 +68,7 @@ try
     barLen = 2.5; % from bulakowski
     maskBarWid = 0.15;
     maskBarLen = 1.5;
-    ecc = 15;
+    ecc = 12;
     tfDist = 4.3; % distance between target + flanker
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
