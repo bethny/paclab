@@ -13,7 +13,7 @@ try
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
     oripath = pwd;
-    addpath(genpath(strcat(oripath,filesep,'Functions')));
+    addpath(genpath('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\')); 
     %Create a directory for this subject's data if not a practice trial
     if blockNum
         pathdata = strcat(pwd,filesep,'Subject_folders',filesep,num2str(subjNum),filesep);
@@ -32,7 +32,7 @@ try
     
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
-        MyCLUT = load('gammaTable1.mat');
+        MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
         Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
     end
     [xCen, yCen] = RectCenter(winRect);
@@ -75,7 +75,7 @@ try
     mn = 3;     % the number of markerWait;
     
     if blockNum % if not practice
-        trialNumber = 20;
+        trialNumber = 200;
     else
         trialNumber = 20;
     end
