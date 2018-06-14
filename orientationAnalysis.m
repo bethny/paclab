@@ -1,7 +1,25 @@
+%% DATASET INFO
+% 3 = Dan, pre-mask
+% 4 = Bethany, ecc = 14, post-mask
+% 5 = Dan, ecc = 14, post-mask
+% 6 = Will, ecc = 14, post-mask
+%%
+
 clear all
 close all
 parentDir = '~/Bethany/paclab';
 % parentDir = '~/code/pac/paclab';
+
+dataDir = sprintf('%s/Subject_folders',parentDir);
+subj = strsplit(ls(dataDir));
+subj = strsplit(subj);
+subj = subj(1:end-2);
+for s = 1:length(subj)-1
+    curSubj = subj{s};
+    blocks = mySubFiles(sprintf('%s/%s',parentDir,curSubj),curSubj,1);
+%     trialInfo(:,:,s) = getTrialInfo(blocks); % crowding str, angle, accuracy
+end
+
 addpath(genpath(parentDir));
 results = load(sprintf('%s/Subject_folders/1_block1/threshold.mat',parentDir));
 block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
