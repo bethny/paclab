@@ -22,6 +22,7 @@ try
             mkdir(pathdata);
         end
         cd(pathdata);
+        pathdata = pwd;
         filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.txt');
         filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.mat');
         filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold_all.mat');
@@ -133,39 +134,6 @@ try
     KbName('UnifyKeyNames');
     crowdingInstructions(blockNum, w)
     
-    Screen('FillRect', w, grey);
-    Screen('TextSize', w, []);
-
-    instText = [];
-
-    %Practice Instructions
-    if currBlock == 0 
-        instText = ['Fixate on the center cross during the entire trial.\n'...
-            'Press the LEFT ARROW KEY if the center bar\n'...
-            'is tilted to the left (counterclockwise).\n'...
-            'Press the RIGHT ARROW KEY if the center bar\n'...
-            'is tilted to the right (clockwise).\n\n'...
-            'If you respond correctly, you will hear a beep. \n'...
-            'If you respond incorrectly, you will hear a lower beep. \n\n'...  
-            'If you need to exit the trial, press q. \n\n'...
-            'We will start with some practice trials. \n\n'...
-            'Press ENTER to continue.'];
-    elseif currBlock == 1
-        instText = ['The practice block is now complete.\n\n'...
-                    'There will be a number of experimental blocks with breaks in between.\n\n'...   
-                    'You will hear a neutral beep when your response has been recorded.\n\n'...
-                    'Press ENTER to continue.\n\n'];
-    else
-        instText = 'Press ENTER to continue.\n\n';
-    end
-    DrawFormattedText(w, instText, 'Center', 'Center', [255 255 255]);
-
-    Screen('Flip', w);
-    FlushEvents('keyDown');
-    GetChar;
-    Screen('TextSize', w, 20);
-    Screen('Flip', w);
-
     activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
     
@@ -234,11 +202,13 @@ try
         end
         
         %staircase stuff
-%         if blockNum
-%             Beeper(750);
-%         end
+        if blockNum
+            Beeper(750);
+        end
         if acc(trial(WhichStair),WhichStair) % IF CORRECT
-            Beeper(1000); %play high beep for correct answer
+            if ~blockNum
+                Beeper(1000); %play high beep for correct answer
+            end
             stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
             if stairCorrect(WhichStair) == 3   % time to make stimulus harder?
                 stairCorrect(WhichStair) = 0;  % zero counter
@@ -261,7 +231,9 @@ try
             end
             
         else %incorrect response
-            Beeper(500);
+            if ~blockNum
+                Beeper(500);
+            end
             stairCorrect(WhichStair) = 0;
             if stairdir(WhichStair) == 0
                 stairdir(WhichStair) = 1;   % change direction to UP
