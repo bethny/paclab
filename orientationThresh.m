@@ -12,6 +12,7 @@ try
     KbName('UnifyKeyNames')
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
+    hemifield = input('\n Num hemifields? 1 or 2: ');
     oripath = pwd;
 %     addpath(genpath('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\')); 
     addpath(genpath(oripath));
@@ -22,9 +23,9 @@ try
             mkdir(pathdata);
         end
         cd(pathdata);
-        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.txt');
-        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.mat');
-        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold_all.mat');
+        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,hemifield),'_threshold.txt');
+        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,hemifield),'_threshold.mat');
+        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,hemifield),'_threshold_all.mat');
     end
     
     %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -51,12 +52,19 @@ try
     secPerFrame = Screen('GetFlipInterval',w);
     
     %% staircase value
+    if blockNum % if not practice
+        trialNumber = 200;
+    else
+        trialNumber = 20;
+    end
+    
     trials = 0; % count # trials overall?
     stairdir = [1 0];  % staircase 1 starts up (1) & 2 starts down (0) direction
     nReverse = [0 0];  % counts the number of reversals each staircase
     stairCorrect = [0 0];  % counts # correct in a row each staircase
     trial = [0 0]; % zero trial counters 2 staircases
     stimulusReversal(2,20) = zeros; % matrix with stimulus setting at staircase reversals
+    rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     flag = 0;
     maxori = 10;
     minori = 0.5; % vertical
@@ -73,15 +81,9 @@ try
     maskBarWid = 0.15;
     maskBarLen = 1.5;
     ecc = 14;
-    tfDist = 4.3; % distance between target + flanker
+    tfDist = 3.5; % distance between target + flanker
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
-    
-    if blockNum % if not practice
-        trialNumber = 200;
-    else
-        trialNumber = 20;
-    end
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -225,6 +227,11 @@ try
                     Screen('CloseAll');
                     ShowCursor;
                 end
+                if responseKey(KbName('LeftArrow'))
+                    rspRatio(1) = rspRatio(1) + 1;
+                elseif responseKey(KbName('RightArrow'))
+                    rspRatio(2) = rspRatio(2) + 1;
+                end
                 if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
                         responseKey(KbName('LeftArrow'))
                     acc(trial(WhichStair),WhichStair) = 1;
@@ -317,7 +324,7 @@ try
             stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
         save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal');
+        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio');
         
         plot(stimulusReversal(1,1:nReverse(1)));hold on;
         plot(stimulusReversal(2,1:nReverse(2)));hold on;

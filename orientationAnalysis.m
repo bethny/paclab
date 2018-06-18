@@ -17,15 +17,18 @@ subj = 7;
 for s = 1:length(subj)
     curSubj = subj(s);
     blocks = mySubFiles(sprintf('%s/%d',dataDir,curSubj),'.',18);
-    trialInfo(:,:,s) = getTrialInfo(blocks); % crowding str, angle, accuracy
+%     trialInfo(:,:,s) = getTrialInfo(blocks); % crowding str, angle, accuracy
 end
 %%
 addpath(genpath(parentDir));
 results = load(sprintf('%s/%d/%s',dataDir,7,blocks{1}));
-block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
+% block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
 
 stimulusReversal = results.stimulusReversal;
 nReverse = results.nReverse;
+
+plot(stimulusReversal(1,1:nReverse(1)));hold on;
+plot(stimulusReversal(2,1:nReverse(2)));hold on;
 %%
 
 sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
