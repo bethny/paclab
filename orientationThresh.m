@@ -32,6 +32,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
+    Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -102,6 +103,10 @@ try
     dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % above target
     dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % below target
     
+    dstRectsInst(:,1) = CenterRectOnPoint(texrect, xCen - eccPx/4, yCen + eccPx/1.5);
+    dstRectsInst(:,2) = CenterRectOnPoint(texrect, xCen + eccPx/4, yCen + eccPx/1.5);
+    rotAnglesInst = [-20 20];
+    
     maskBar = ones(maskBarLenPx, maskBarWidPx);
     maskBarTex = Screen('MakeTexture', w, maskBar);
     maskTexrect = Screen('Rect', maskBarTex); % convert into rect
@@ -131,15 +136,14 @@ try
     %% instructions
     
     KbName('UnifyKeyNames');
-    crowdingInstructions(blockNum, w)
-    
+%     crowdingInstructions(blockNum, w)
     Screen('FillRect', w, grey);
     Screen('TextSize', w, []);
 
     instText = [];
 
     %Practice Instructions
-    if currBlock == 0 
+    if blockNum == 0 
         instText = ['Fixate on the center cross during the entire trial.\n'...
             'Press the LEFT ARROW KEY if the center bar\n'...
             'is tilted to the left (counterclockwise).\n'...
@@ -150,7 +154,7 @@ try
             'If you need to exit the trial, press q. \n\n'...
             'We will start with some practice trials. \n\n'...
             'Press ENTER to continue.'];
-    elseif currBlock == 1
+    elseif blockNum == 1
         instText = ['The practice block is now complete.\n\n'...
                     'There will be a number of experimental blocks with breaks in between.\n\n'...   
                     'You will hear a neutral beep when your response has been recorded.\n\n'...
@@ -159,7 +163,8 @@ try
         instText = 'Press ENTER to continue.\n\n';
     end
     DrawFormattedText(w, instText, 'Center', 'Center', [255 255 255]);
-
+    Screen('DrawTextures', w, barTexVert, [], dstRectsInst, rotAnglesInst);
+    
     Screen('Flip', w);
     FlushEvents('keyDown');
     GetChar;
