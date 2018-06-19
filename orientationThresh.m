@@ -60,8 +60,8 @@ try
     
     %% staircase value
     if blockNum % if not practice
-%         trialNumber = 100*hemifield*2;
-        trialNumber = 40;
+        trialNumber = 100*hemifield*2;
+%         trialNumber = 40;
     else
         trialNumber = 20;
     end
