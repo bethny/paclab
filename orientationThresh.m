@@ -1,8 +1,15 @@
-%Makes a double staircase for Gabor orientation discrimination (one starts
+%Makes a double staircase for bar orientation discrimination (one starts
 %at 0 degree difference, the other 10 degree) and after 10 reversals,
-%should show us at what point signal dots matter to the user.
+%should show us the threshold of accurate orientation discrimination.
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
-% written by Jianfei, Fall 2015
+% written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
+
+% SUBJECTS
+% BLOCKING: A = right side only, B = both hemifields
+% 1 AB Jianfei
+% 2 BA Bethany
+% 3 AB Christian
+% 4 BA
 
 try
     VIEWING_DISTANCE_CM = 52;
@@ -53,22 +60,23 @@ try
     
     %% staircase value
     if blockNum % if not practice
-        trialNumber = 200;
+%         trialNumber = 100*hemifield*2;
+        trialNumber = 40;
     else
         trialNumber = 20;
     end
-    
+       
     trials = 0; % count # trials overall?
-    stairdir = [1 0];  % staircase 1 starts up (1) & 2 starts down (0) direction
-    nReverse = [0 0];  % counts the number of reversals each staircase
-    stairCorrect = [0 0];  % counts # correct in a row each staircase
-    trial = [0 0]; % zero trial counters 2 staircases
-    stimulusReversal(2,20) = zeros; % matrix with stimulus setting at staircase reversals
+    stairdir = repmat([1 0],1,hemifield);  % staircase 1 starts up (1) & 2 starts down (0) direction
+    nReverse = zeros(1,hemifield*2);  % counts the number of reversals each staircase
+    stairCorrect = zeros(1,hemifield*2); % counts # correct in a row each staircase
+    trial = zeros(1,hemifield*2); % zero trial counters 2 staircases
+    stimulusReversal = zeros(hemifield*2,20); % matrix with stimulus setting at staircase reversals
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     flag = 0;
     maxori = 10;
     minori = 0.5; % vertical
-    ori = [minori maxori];    % 2 starting points
+    ori = repmat([minori maxori],1,hemifield);    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals\
     presentationDur = .2;
     maskDur = .2;
@@ -84,6 +92,20 @@ try
     tfDist = 3.5; % distance between target + flanker
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
+    
+    orientList = [-1 1]; % left vs right tilt
+    orientIndex = repmat(orientList,1,trialNumber./2);
+    n = randperm(trialNumber);
+    oriIndex = orientIndex(1,n);
+    
+    if hemifield == 2
+        hemiList = [-1 1]; % left vs right hemifield
+    else
+        hemiList = [1 1];
+    end
+    hemiIdx = repmat(hemiList,1,trialNumber./2);
+    n = randperm(trialNumber);
+    hemiIndex = hemiIdx(1,n);
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -101,9 +123,6 @@ try
     barVert = ones(barLenPx, barWidPx); % assign pixel values for bar
     barTexVert = Screen('MakeTexture', w, barVert); % convert into texture
     texrect = Screen('Rect', barTexVert); % convert into rect
-    dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx, yCen); % position the bars; target
-    dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % above target
-    dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % below target
     
     dstRectsInst(:,1) = CenterRectOnPoint(texrect, xCen - eccPx/4, yCen + eccPx/1.5);
     dstRectsInst(:,2) = CenterRectOnPoint(texrect, xCen + eccPx/4, yCen + eccPx/1.5);
@@ -112,20 +131,6 @@ try
     maskBar = ones(maskBarLenPx, maskBarWidPx);
     maskBarTex = Screen('MakeTexture', w, maskBar);
     maskTexrect = Screen('Rect', maskBarTex); % convert into rect
-    
-    upperBound = dstRects(2,2);
-    lowerBound = dstRects(4,3);
-    leftBound = dstRects(1,3);
-    rightBound = dstRects(3,2);
-    nRow = 4;
-    nCol = 4;
-    
-    point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);
-    
-    orientList = [-1 1]; % left vs right tilt
-    orientIndex = repmat(orientList,1,trialNumber./2);
-    n = randperm(trialNumber);
-    oriIndex = orientIndex(1,n);
     
     %initialize stuff for feedback
     FirstShow(1:trialNumber) = zeros;
@@ -165,7 +170,10 @@ try
         instText = 'Press ENTER to continue.\n\n';
     end
     DrawFormattedText(w, instText, 'Center', 'Center', [255 255 255]);
-    Screen('DrawTextures', w, barTexVert, [], dstRectsInst, rotAnglesInst);
+    
+    if blockNum == 0
+        Screen('DrawTextures', w, barTexVert, [], dstRectsInst, rotAnglesInst);
+    end
     
     Screen('Flip', w);
     FlushEvents('keyDown');
@@ -180,7 +188,7 @@ try
     
     while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the upper limit
         trials = trials + 1;
-        WhichStair = randi(2); % which staircase to use
+        WhichStair = randi(hemifield*2); % which staircase to use
         stdir = stairdir(WhichStair);
         stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
@@ -196,6 +204,23 @@ try
         WaitSecs(markerWait(trials));
         
         % draw stimulus display
+        % position the stimuli 
+        dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
+        dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); 
+            % above target
+        dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); 
+            % below target
+            
+        % position the mask
+        upperBound = dstRects(2,2);
+        lowerBound = dstRects(4,3);
+        leftBound = dstRects(1,3);
+        rightBound = dstRects(3,2);
+        nRow = 4;
+        nCol = 4;  
+        point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);
+        
+        % pick orientations
         r1(trials) = oriIndex(trials)*ori(WhichStair);
         rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
@@ -259,7 +284,8 @@ try
                 if stairdir(WhichStair) == 1 % if stair direction is currently UP (= 1) this is a reversal
                     stairdir(WhichStair) = 0; % stair direction changes to DOWN
                     nReverse(WhichStair) = nReverse(WhichStair) + 1; % count reversal
-                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value (stairStep) at reversal
+                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value (stairStep) 
+                                                                                            % at reversal
                 end
                 %change stimulus to make stimulus harder
                 if ori(WhichStair) <= 5
@@ -321,10 +347,10 @@ try
         ListenChar(1); % Turn keyboard output to command window on
         
         dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
-            stdir,stairCorrect(WhichStair),nReverse(WhichStair)],'-append', 'roffset', [],'delimiter', '\t');
+            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials)],'-append', 'roffset', [],'delimiter', '\t');
         save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio');
+        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex');
         
         plot(stimulusReversal(1,1:nReverse(1)));hold on;
         plot(stimulusReversal(2,1:nReverse(2)));hold on;
