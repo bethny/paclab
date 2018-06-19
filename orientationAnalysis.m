@@ -11,17 +11,16 @@ parentDir = '~/Bethany/paclab';
 % parentDir = '~/code/pac/paclab';
 
 dataDir = sprintf('%s/Subject_folders',parentDir);
-% subj = strsplit(ls(dataDir));
-% subj = subj(1:end-2);
-subj = 7;
+subj = strsplit(ls(dataDir));
+subj = str2num(subj{1:end-3});
 for s = 1:length(subj)
     curSubj = subj(s);
-    blocks = mySubFiles(sprintf('%s/%d',dataDir,curSubj),'.',18);
+    blocks = mySubFiles(sprintf('%s/%d',dataDir,curSubj),'.m',24);
 %     trialInfo(:,:,s) = getTrialInfo(blocks); % crowding str, angle, accuracy
 end
 %%
 addpath(genpath(parentDir));
-results = load(sprintf('%s/%d/%s',dataDir,7,blocks{1}));
+results = load(sprintf('%s/%d/%s',dataDir,1,blocks{1}));
 % block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
 
 stimulusReversal = results.stimulusReversal;
