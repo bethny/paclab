@@ -147,7 +147,6 @@ try
     Keyresponse(1:trialNumber,1:2) = zeros;
     hemiIndex(1:trialNumber) = zeros;
     flankerIndex(1:trialNumber) = zeros;
-    stairOrder(1:trialNumber) = zeros;
     
     %% instructions
     
@@ -195,10 +194,24 @@ try
     while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the upper limit
         trials = trials + 1 
         WhichStair = randi(nStairDir*nHemi*nFlankerTilt); % which staircase to use
-        stairOrder(trials) = WhichStair; 
         stdir = stairdir(WhichStair);
         stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
+        
+        switch WhichStair
+            case 1 || 2
+                hemiIndex(trials) = -1;
+                flankerIndex(trials) = -1;
+            case 3 || 4
+                hemiIndex(trials) = -1;
+                flankerIndex(trials) = 1;
+            case 5 || 6
+                hemiIndex(trials) = 1;
+                flankerIndex(trials) = -1;
+            case 7 || 8
+                hemiIndex(trials) = 1;
+                flankerIndex(trials) = 1;
+        end
         
         if WhichStair == 1 || WhichStair == 2
             hemiIndex(trials) = -1;
@@ -206,9 +219,9 @@ try
         elseif WhichStair == 3 || WhichStair == 4
             hemiIndex(trials) = -1;
             flankerIndex(trials) = 1;
-        elseif WhichStair == 5 || WhichStair == 6
-            hemiIndex(trials) = 1;
-            flankerIndex(trials) = -1;
+        elseif WhichStair == 3 || WhichStair == 4
+            hemiIndex(trials) = -1;
+            flankerIndex(trials) = 1;
         else
             hemiIndex(trials) = 1;
             flankerIndex(trials) = 1;
@@ -356,7 +369,7 @@ try
                 Screen('Flip',w);
                 WaitSecs(2); 
                 KbWait;
-                while KbCheck; end
+                while KbCheck; end;
             end
         end
     end
@@ -382,13 +395,11 @@ try
         ListenChar(1); % Turn keyboard output to command window on
         
         dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
-            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials),...
-            flankerIndex(trials)],'-append', ...
+            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials)],'-append', ...
             'roffset', [],'delimiter', '\t');
         save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder');
+        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey');
         
         plot(stimulusReversal(1,1:nReverse(1)));hold on;
         plot(stimulusReversal(2,1:nReverse(2)));hold on;
