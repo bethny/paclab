@@ -244,7 +244,8 @@ try
         maskRotAngles = randi(360,1,length(point));
         Screen('FillOval', w, white,FIXATION_POSITION,10);
         Screen('DrawTextures', w, maskBarTex, [], maskDstRects, maskRotAngles);
-        Screen('FillOval', w, circColor, circDstRects, max(circDstRects) * 1.01);
+%         Screen('FillOval', w, circColor, circDstRects, max(circDstRects) * 1.01);
+        Screen('FrameOval', w, [], circDstRects);
         Screen('Flip',w);
         WaitSecs(maskDur);
         
