@@ -5,11 +5,10 @@
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
 % SUBJECTS
-% BLOCKING: A = right side only, B = both hemifields
-% 1 AB Jianfei
-% 2 BA Bethany
-% 3 AB Christian
-% 4 BA
+% 1 Dan
+% 2 Bethany
+% 3 James
+% 4 Christian
 
 try
     VIEWING_DISTANCE_CM = 52;
@@ -19,7 +18,6 @@ try
     KbName('UnifyKeyNames')
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
-    hemifield = input('\n Num hemifields? 1 or 2: ');
     oripath = pwd;
 %     addpath(genpath('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\')); 
     addpath(genpath(oripath));
@@ -30,9 +28,9 @@ try
             mkdir(pathdata);
         end
         cd(pathdata);
-        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,hemifield),'_threshold.txt');
-        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,hemifield),'_threshold.mat');
-        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,hemifield),'_threshold_all.mat');
+        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,nHemi),'_threshold.txt');
+        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,nHemi),'_threshold.mat');
+        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d_%dhemi',subjNum,blockNum,nHemi),'_threshold_all.mat');
     end
     
     %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -40,7 +38,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    Screen('Preference', 'SkipSyncTests', 1);
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -61,23 +59,27 @@ try
     
     %% staircase value
     if blockNum % if not practice
-        trialNumber = 100*hemifield*2;
-%         trialNumber = 40;
+        trialNumber = 100*nStairDir*nHemi*nFlankerTilt; % 100 each for up/down(2)*#nHemi(2)*#flankertilt(2)
     else
         trialNumber = 20;
     end
-       
+    
+    nStairDir = 2;
+    nHemi = 2;
+    nFlankerTilt = 2;
+    
     trials = 0; % initiate trial counter
-    stairdir = repmat([1 0],1,hemifield);  % staircase 1 starts up (1) & 2 starts down (0) direction
-    nReverse = zeros(1,hemifield*2);  % counts the number of reversals each staircase
-    stairCorrect = zeros(1,hemifield*2); % counts # correct in a row each staircase
-    trial = zeros(1,hemifield*2); % zero trial counters 2 staircases
-    stimulusReversal = zeros(hemifield*2,20); % matrix with stimulus setting at staircase reversals
+    stairdir = repmat([1 0],1,nHemi*nFlankerTilt);  % staircase 1 starts up (1) & 2 starts down (0) direction
+    nReverse = zeros(1,nStairDir*nHemi*nFlankerTilt);  % counts the number of reversals each staircase
+    stairCorrect = zeros(1,nStairDir*nHemi*nFlankerTilt); % counts # correct in a row each staircase
+    trial = zeros(1,nStairDir*nHemi*nFlankerTilt); % zero trial counters 2 staircases
+    stimulusReversal = zeros(nStairDir*nHemi*nFlankerTilt,20); % matrix with stimulus setting at staircase reversals
+    rspKey = zeros(1,trialNumber);
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     flag = 0;
     maxori = 10;
     minori = 0.5; % vertical
-    ori = repmat([minori maxori],1,hemifield);    % 2 starting points
+    ori = repmat([minori maxori],1,nHemi*nFlankerTilt);    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals\
     presentationDur = .2;
     maskDur = .2;
@@ -99,14 +101,15 @@ try
     n = randperm(trialNumber);
     oriIndex = orientIndex(1,n);
     
-    if hemifield == 2
-        hemiList = [-1 1]; % left vs right hemifield
-    else
-        hemiList = [1 1];
-    end
+    hemiList = [-1 1]; % left vs right nHemi
     hemiIdx = repmat(hemiList,1,trialNumber./2);
     n = randperm(trialNumber);
     hemiIndex = hemiIdx(1,n);
+    
+    flankerTilt = [-1 1];
+    flankerIdx = repmat(flankerTilt,1,trialNumber./2);
+    n = randperm(trialNumber);
+    flankerIndex = flankerIdx(1,n);
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -145,10 +148,8 @@ try
     %% instructions
     
     KbName('UnifyKeyNames');
-%     crowdingInstructions(blockNum, w)
     Screen('FillRect', w, grey);
     Screen('TextSize', w, []);
-
     instText = [];
 
     %Practice Instructions
@@ -190,7 +191,7 @@ try
     
     while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the upper limit
         trials = trials + 1;
-        WhichStair = randi(hemifield*2); % which staircase to use
+        WhichStair = randi(nHemi*2*2); % which staircase to use
         stdir = stairdir(WhichStair);
         stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
@@ -228,10 +229,8 @@ try
         
         % pick orientations
         r1(trials) = oriIndex(trials)*ori(WhichStair);
-        rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
+        rotAngles = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
-        % Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
-        %     30, 30, [255, 255, 255]);
         Screen('FillOval', w, white, FIXATION_POSITION, 10);
         Screen('Flip',w);
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
@@ -244,12 +243,11 @@ try
         maskRotAngles = randi(360,1,length(point));
         Screen('FillOval', w, white,FIXATION_POSITION,10);
         Screen('DrawTextures', w, maskBarTex, [], maskDstRects, maskRotAngles);
-%         Screen('FillOval', w, circColor, circDstRects, max(circDstRects) * 1.01);
-        Screen('FrameOval', w, [], circDstRects);
         Screen('Flip',w);
         WaitSecs(maskDur);
         
         Screen('FillOval', w, white,FIXATION_POSITION,10);
+        Screen('FrameOval', w, [], circDstRects);
         Screen('Flip',w);
         
         keypressed = 0;
@@ -262,8 +260,10 @@ try
                 end
                 if responseKey(KbName('LeftArrow'))
                     rspRatio(1) = rspRatio(1) + 1;
+                    rspKey(trials) = 0;
                 elseif responseKey(KbName('RightArrow'))
                     rspRatio(2) = rspRatio(2) + 1;
+                    rspKey(trials) = 1;
                 end
                 if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
                         responseKey(KbName('LeftArrow'))
@@ -279,9 +279,6 @@ try
         end
         
         %staircase stuff
-%         if blockNum
-%             Beeper(750);
-%         end
         if acc(trial(WhichStair),WhichStair) % IF CORRECT
             Beeper(1000); %play high beep for correct answer
             stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
@@ -355,10 +352,10 @@ try
         ListenChar(1); % Turn keyboard output to command window on
         
         dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
-            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials)],'-append', 'roffset', [],'delimiter', '\t');
+            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials)],'-append', 'roffset', [],'delimiter', '\t');
         save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex');
+        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey');
         
         plot(stimulusReversal(1,1:nReverse(1)));hold on;
         plot(stimulusReversal(2,1:nReverse(2)));hold on;
