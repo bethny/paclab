@@ -40,7 +40,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-%     Screen('Preference', 'SkipSyncTests', 1);
+    Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -57,6 +57,7 @@ try
     CMperDeg = ppd/pixelPerCM;
     HideCursor;
     secPerFrame = Screen('GetFlipInterval',w);
+    Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
     
     %% staircase value
     if blockNum % if not practice
@@ -123,6 +124,8 @@ try
     barVert = ones(barLenPx, barWidPx); % assign pixel values for bar
     barTexVert = Screen('MakeTexture', w, barVert); % convert into texture
     texrect = Screen('Rect', barTexVert); % convert into rect
+    
+    circrect = [0 0 barLenPx barLenPx]; 
     
     dstRectsInst(:,1) = CenterRectOnPoint(texrect, xCen - eccPx/4, yCen + eccPx/1.5);
     dstRectsInst(:,2) = CenterRectOnPoint(texrect, xCen + eccPx/4, yCen + eccPx/1.5);
@@ -219,13 +222,17 @@ try
         nCol = 4;  
         point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);
         
+        % position the circle mask
+        circDstRects = CenterRectOnPoint(circrect, xCen + eccPx*hemiIndex(trials), yCen); 
+        circColor = [0 0 0 150]; 
+        
         % pick orientations
         r1(trials) = oriIndex(trials)*ori(WhichStair);
         rotAngles = [r1(trials) -45 -45]; % optimal for threshold elevation
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
         % Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
         %     30, 30, [255, 255, 255]);
-        Screen('FillOval', w,white,FIXATION_POSITION,10);
+        Screen('FillOval', w, white, FIXATION_POSITION, 10);
         Screen('Flip',w);
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
         WaitSecs(presentationDur);
@@ -235,8 +242,9 @@ try
             maskDstRects(:,i) = CenterRectOnPoint(maskTexrect, point(i,1)+randi([-30 30]), point(i,2)+randi([-30 30]));
         end
         maskRotAngles = randi(360,1,length(point));
-        Screen('FillOval', w,white,FIXATION_POSITION,10);
+        Screen('FillOval', w, white,FIXATION_POSITION,10);
         Screen('DrawTextures', w, maskBarTex, [], maskDstRects, maskRotAngles);
+        Screen('FillOval', w, circColor, circDstRects, max(circDstRects) * 1.01);
         Screen('Flip',w);
         WaitSecs(maskDur);
         
