@@ -37,7 +37,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    Screen('Preference', 'SkipSyncTests', 1);
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -61,7 +61,7 @@ try
     nStairDir = 2;
     nHemi = 2;
 %     nFlankerTilt = 2;
-    nFlankerTilt = 1;
+    nFlankerTilt = 1; % 1 staircase for both
     nCrowdLvl = 2;
     nStaircase = nStairDir*nHemi*nFlankerTilt*nCrowdLvl;
     
@@ -84,7 +84,7 @@ try
     minori = 0.5; % vertical
     ori = repmat([minori maxori],1,nHemi*nFlankerTilt*nCrowdLvl);    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals\
-    presentationDur = 2;
+    presentationDur = .2;
     maskDur = .2;
     
     %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -209,7 +209,7 @@ try
     while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the upper limit
         clear dstRects
         trials = trials + 1 
-        WhichStair = randi(nStairDir*nHemi*nFlankerTilt); % which staircase to use
+        WhichStair = randi(nStaircase); % which staircase to use
         stairOrder(trials) = WhichStair; 
         stdir = stairdir(WhichStair);
         stori = ori(WhichStair);
@@ -305,8 +305,8 @@ try
             rotAngles = r1(trials);
         end
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
-        Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
-            30, 30, [255, 255, 255]);
+%         Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
+%             30, 30, [255, 255, 255]);
         Screen('FillOval', w, white, FIXATION_POSITION, 10);
         Screen('Flip',w);
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
