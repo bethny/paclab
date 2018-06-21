@@ -1,0 +1,301 @@
+%% DATASET INFO
+% 1 = Sydney
+% 2 = James
+% 3 = Christian
+
+%%
+clear all
+close all
+% parentDir = '~/Bethany/paclab';
+parentDir = '~/code/pac/paclab';
+addpath(genpath(parentDir));
+
+nCnd = 8; % num staircases
+
+dataDir = sprintf('%s/Subject_folders',parentDir);
+subj = sort(strsplit(ls(dataDir)));
+subj = subj(2:end-3);
+for s = 2:length(subj)
+    curSubj = subj{s};
+    file = mySubFiles(sprintf('%s/%s',dataDir,curSubj),'.m',18);
+    data = load(file{:});
+    stimRev = data.stimulusReversal;
+    for j = 1:size(stimRev,1)
+        finalRev(s,j) = stimRev(j,max(find(stimRev(j,:) ~= 0)));
+    end
+    nReverse = data.nReverse;
+
+    trialsPerStair = data.trial;
+    acc = data.acc;
+    acc = acc(1:max(trialsPerStair),:); % already split up by staircase
+    
+    for i = 1:nCnd % num staircases
+        accVec = acc(1:trialsPerStair(i),i);
+        accuracy(s,i) = sum(accVec)/trialsPerStair(i);
+    end
+    minRev = min(nReverse
+    for i = 1:nCnd
+        sumReversal(i) = sum(stimRev(i,4:nReverse(i)));
+        stairmean(s,i) = sumReversal(i)/(nReverse(i)-3);
+        StandardDev(s,i) = std(stimRev(i,4:nReverse(i)));
+        allRevData(s,i) = stimRev(i,4:nReverse(i));
+    end
+    
+    rspRatio = data.rspRatio;
+    percRight(s) = rspRatio(2)/sum(rspRatio);
+    
+    % analyzing hemifield dependence of response bias
+    trials = data.trials;
+    rspKey = data.rspKey;
+    rspKey = rspKey(1:trials);
+    r1 = data.r1;
+    r1 = r1(1:trials);
+    hemiIdx = data.hemiIndex;
+    hemiIdx = hemiIdx(1:trials);
+    flankerIdx = data.flankerIndex;
+    flankerIdx = flankerIdx(1:trials);
+    
+    rightTarget = find(r1 > 0);
+    leftTarget = find(r1 < 0);
+    rightPress = find(rspKey == 1);
+    leftPress = find(rspKey == 0);
+    rightHemi = find(hemiIdx == 1);
+    leftHemi = find(hemiIdx == -1);
+    rightFlanker = find(flankerIdx == 1);
+    leftFlanker = find(flankerIdx == -1);
+    
+    % for all + presses, how many occurred in the right hemi? 
+    counter = 0;
+    for i = 1:length(rightPress)
+        if find(rightHemi == rightPress(i))
+            counter = counter + 1;
+        end
+    end
+    propRPressRHemi(s) = counter/length(rightPress);
+    
+    % for all + targets, how many occurred in the right hemi? 
+    counter = 0;
+    for i = 1:length(rightTarget)
+        if find(rightHemi == rightTarget(i))
+            counter = counter + 1;
+        end
+    end
+    propRTargRHemi(s) = counter/length(rightTarget);
+    
+    % for all + presses, how many had + flankers?? / CORRECT
+    counter = 0;
+    for i = 1:length(rightPress)
+        if find(rightFlanker == rightPress(i))
+            counter = counter + 1;
+        end
+    end
+    propRPressRFlanker(s) = counter/length(rightPress);
+    
+    % for all + targets, how many had + flankers? 
+    counter = 0;
+    for i = 1:length(rightTarget)
+        if find(rightFlanker == rightTarget(i))
+            counter = counter + 1;
+        end
+    end
+    propRTargAndRFlank(s) = counter/length(rightTarget);
+    
+    % for all trials with - presses, how many + flankers? 
+%     counter = 0;
+%     for i = 1:length(leftPress)
+%         if find(rightFlanker == leftPress(i))
+%             counter = counter + 1;
+%         end
+%     end
+%     propRFlankerLPress(s) = counter/length(leftPress);
+    
+    % for all trials w/ + flankers, how many - presses? 
+    counter = 0;
+    for i = 1:length(rightFlanker)
+        if find(rightFlanker(i) == leftPress)
+            counter = counter + 1;
+        end
+    end
+    propLPressRFlanker(s) = counter/length(rightFlanker);
+    
+    % now check actual frequency of - targets during all trials w/ + flankers
+    counter = 0;
+    for i = 1:length(rightFlanker)
+        if find(rightFlanker(i) == leftTarget)
+            counter = counter + 1;
+        end
+    end
+    propLTargetRFlanker(s) = counter/length(rightFlanker);
+    
+    % how many - targets occurred with + flankers? to check accuracy of the + presses during + flankers
+    counter = 0;
+    for i = 1:length(leftTarget)
+        if find(rightFlanker == leftTarget(i))
+            counter = counter + 1;
+        end
+    end
+    propLTargAndRFlank(s) = counter/length(leftTarget);
+end
+
+cndNames = {'Subj 1' 'Subj 2' 'Subj 3' 'Subj 4'};
+gcaOpts = {'XTick',1:4,'XTickLabel',cndNames,'box',...
+    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
+
+%% PLOT / for all trials w + flankers, how many - press?
+figure
+bar(propLTargetRFlanker)
+set(gca,gcaOpts{:})
+title('for all + flankers, % of - response')
+xlabel('Subject')
+ylabel('Percentage left (-) response')
+ylim([0 1])
+hold on
+bar(propLPressRFlanker, 0.4, 'FaceAlpha',0.5)
+legend({'correct' 'actual'},'AutoUpdate','off','location','northeast');
+hold off
+
+%% PLOT / BAR OF LOCAL ORI & GLOBAL HEMI BIAS
+
+cndNames = {'Subj 1' 'Subj 2' 'Subj 3' 'Subj 4'};
+gcaOpts = {'XTick',1:4,'XTickLabel',cndNames,'box',...
+    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
+
+figure
+bar(propRTargRHemi)
+set(gca,gcaOpts{:})
+title('% + (right) keypress with stimulus in right hemifield')
+xlabel('Subject')
+ylabel('Percentage + (right) response')
+ylim([0 1])
+hold on
+bar(propRPressRHemi, 0.4, 'FaceAlpha',0.5)
+legend({'correct' 'actual'},'AutoUpdate','off','location','northeast');
+hold off
+
+figure
+bar(propRTargAndRFlank)
+set(gca,gcaOpts{:})
+title('% + (right) keypress with + flankers')
+xlabel('Subject')
+ylabel('Percentage + (right) response')
+ylim([0 1])
+hold on
+bar(propRPressRFlanker, 0.4, 'FaceAlpha',0.5)
+legend({'prop of + targ with + flanker' 'prop of + press with + flanker'},'AutoUpdate','off','location','northeast');
+hold off
+
+%% PLOTS / BAR OF AVG REVERSAL VALUE (THRESHOLD)
+cndNames = {'D/L/-','U/L/-','D/L/+','U/L/+','D/R/-','U/R/-','D/R/+','U/R/+'};
+gcaOpts = {'XTick',1:nCnd,'XTickLabel',cndNames,'box',...
+    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
+
+figure
+h = bar(stairmean');
+h(1).FaceColor = [229,66,66]/255;
+h(2).FaceColor = [35,169,181]/255;
+h(3).FaceColor = [145 186 218]/255;
+legend({'Subj 1','Subj 2','Subj 3','Subj 4'},'AutoUpdate','off','location','northeast');
+hold on;
+ngroups = size(stairmean, 2);
+nbars = size(stairmean, 1);
+groupwidth = min(0.8, nbars/(nbars + 1.5));
+for i = 1:nbars
+    x = (1:ngroups) - (groupwidth/2) + (2*i-1) * (groupwidth / (2*nbars));
+    errorbar(x, stairmean(i,:), StandardDev(i,:), 'k', 'linestyle', 'none');
+end
+set(gca,gcaOpts{:})
+title('Avg reversal values, excluding first 3')
+xlabel('Condition/Staircase')
+ylabel('Avg threshold (deg)')
+ylim([0 12])
+
+%% TTEST TO TEST + vs - FLANKERS
+
+idx = 0;
+for i = [1,2,5,6]
+    idx = idx+1;
+    cnd1 = stairmean(:,i);
+    cnd2 = stairmean(:,i+2);
+    [h(idx),p(idx)] = ttest(cnd1,cnd2);
+end
+
+%% COMPARING STAIRCASES
+subjStairMean = mean(stairmean, 1);
+subjStairDev = std(stairmean,1); 
+
+bar(subjStairMean)
+hold on
+errorbar(1:8,subjStairMean,subjStairDev,'.')
+
+%%
+figure
+hold on
+for i = 2:size(finalRev,1)
+    plot(finalRev(i,:),'o')
+end
+
+% available variables: 
+% trials
+% nReverse
+% trial
+% stimulusReversal
+% rspKey
+% hemiIndex
+% flankerIndex
+% acc
+% stairOrder
+
+% TO DO: cross-correlate stairOrder and acc, hemiIndex and acc,
+% flankerIndex and acc, hemiIndex and flankerIndex and acc to spot trends
+
+% PUT BACK IN WHEN BLOCKS ARE A THING
+%     blocks = mySubFiles(sprintf('%s/%s',dataDir,curSubj),'.m',18);
+%     for i = 1:length(blocks)
+%         data = load(blocks{i});
+%         stimRev = data.stimulusReversal;
+%         for j = 1:size(stimRev,1)
+%             finalRev(j) = stimRev(j,max(find(stimRev(j,:) ~= 0)));
+%         end
+%         avgRev(i) = mean(finalRev);
+%     end
+%     allAvgRev(s,:) = avgRev;
+%% DEVELOPMENT
+
+for i = 1:8 % num staircases
+    accVec = acc(1:trialsPerStair(i),i);
+    accuracy(i) = sum(accVec)/trialsPerStair(i);
+end
+%%
+i = 1;
+data = load(blocks{i});
+stimRev = data.stimulusReversal;
+for j = 1:size(stimRev,1)
+    finalRev(j) = stimRev(j,max(find(stimRev(j,:) ~= 0)));
+end
+avgRev = mean(finalRev);
+
+rspKey = data.rspKey;
+trials = data.trials;
+rspKey = rspKey(1:trials);
+
+
+%%
+addpath(genpath(parentDir));
+results = load(sprintf('%s/%d/%s',dataDir,1,blocks{1}));
+% block2 = load(sprintf('%s/Subject_folders/1_block2/threshold.mat',parentDir));
+
+stimulusReversal = results.stimulusReversal;
+nReverse = results.nReverse;
+
+plot(stimulusReversal(1,1:nReverse(1)));hold on;
+plot(stimulusReversal(2,1:nReverse(2)));hold on;
+%%
+
+for i = 1:8
+    sumReversal(i) = sum(stimRev(i,4:nReverse(i)));
+    stairmean(i) = sumReversal(i)/(nReverse(i)-3);
+    StandardDev(i) = std(stimRev(i,4:nReverse(i)));
+end
+
+plot(stimRev(1,1:nReverse(1)));hold on;
+plot(stimRev(2,1:nReverse(2)));hold on;

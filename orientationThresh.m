@@ -19,7 +19,6 @@ try
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
     oripath = pwd;
-%     addpath(genpath('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\')); 
     addpath(genpath(oripath));
     %Create a directory for this subject's data if not a practice trial
     if blockNum
@@ -61,28 +60,31 @@ try
     
     nStairDir = 2;
     nHemi = 2;
-    nFlankerTilt = 2;
+%     nFlankerTilt = 2;
+    nFlankerTilt = 1;
+    nCrowdLvl = 2;
+    nStaircase = nStairDir*nHemi*nFlankerTilt*nCrowdLvl;
     
     if blockNum % if not practice
-        trialNumber = 100*nStairDir*nHemi*nFlankerTilt; % 100 each for up/down(2)*#nHemi(2)*#flankertilt(2)
+        trialNumber = 100*nStairDir*nHemi*nFlankerTilt*nCrowdLvl; % 100 each for up/down(2)*#nHemi(2)*#flankertilt(2)
     else
         trialNumber = 20;
     end
     
     trials = 0; % initiate trial counter
-    stairdir = repmat([1 0],1,nHemi*nFlankerTilt);  % staircase 1 starts up (1) & 2 starts down (0) direction
-    nReverse = zeros(1,nStairDir*nHemi*nFlankerTilt);  % counts the number of reversals each staircase
-    stairCorrect = zeros(1,nStairDir*nHemi*nFlankerTilt); % counts # correct in a row each staircase
-    trial = zeros(1,nStairDir*nHemi*nFlankerTilt); % zero trial counters 2 staircases
-    stimulusReversal = zeros(nStairDir*nHemi*nFlankerTilt,20); % matrix with stimulus setting at staircase reversals
+    stairdir = repmat([1 0],1,nHemi*nFlankerTilt*nCrowdLvl);  % staircase 1 starts up (1) & 2 starts down (0) direction
+    nReverse = zeros(1,nStaircase);  % counts the number of reversals each staircase
+    stairCorrect = zeros(1,nStaircase); % counts # correct in a row each staircase
+    trial = zeros(1,nStaircase); % zero trial counters 2 staircases
+    stimulusReversal = zeros(nStaircase,20); % matrix with stimulus setting at staircase reversals
     rspKey = zeros(1,trialNumber);
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     flag = 0;
-    maxori = 10;
+    maxori = 20;
     minori = 0.5; % vertical
-    ori = repmat([minori maxori],1,nHemi*nFlankerTilt);    % 2 starting points
+    ori = repmat([minori maxori],1,nHemi*nFlankerTilt*nCrowdLvl);    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals\
-    presentationDur = .2;
+    presentationDur = 2;
     maskDur = .2;
     
     %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -91,7 +93,6 @@ try
     barWid = 0.3; % from bulakowski
     barLen = 2.5; % from bulakowski
     maskBarWid = 0.15;
-    maskBarLen = 1.5;
     ecc = 14;
     tfDist = 4; % distance between target + flanker
     markerWaitList = [0.75, 1, 1.25];
@@ -107,10 +108,10 @@ try
 %     n = randperm(trialNumber);
 %     hemiIndex = hemiIdx(1,n);
     
-%     flankerTilt = [-1 1];
-%     flankerIdx = repmat(flankerTilt,1,trialNumber./2);
-%     n = randperm(trialNumber);
-%     flankerIndex = flankerIdx(1,n);
+    flankerTilt = [-1 1];
+    flankerIdx = repmat(flankerTilt,1,trialNumber./2);
+    n = randperm(trialNumber);
+    flankerIndex = flankerIdx(1,n);
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -119,7 +120,7 @@ try
     barLenPx = round(barLen*ppd);
     barWidPx = round(barWid*ppd);
     maskBarWidPx = round(maskBarWid*ppd);
-    maskBarLenPx = round(maskBarLen*ppd);
+   
     
     markerWaitIndex = repmat(markerWaitList,1,floor((trialNumber+mn)./mn));
     n = randperm(trialNumber);
@@ -135,10 +136,6 @@ try
     dstRectsInst(:,2) = CenterRectOnPoint(texrect, xCen + eccPx/4, yCen + eccPx/1.5);
     rotAnglesInst = [-20 20];
     
-    maskBar = ones(maskBarLenPx, maskBarWidPx);
-    maskBarTex = Screen('MakeTexture', w, maskBar);
-    maskTexrect = Screen('Rect', maskBarTex); % convert into rect
-    
     %initialize stuff for feedback
     stimulus_onset_time(1:trialNumber) = zeros;
     r1(1:trialNumber) = zeros;
@@ -146,19 +143,27 @@ try
     rt(1:trialNumber,1:2) = zeros;
     Keyresponse(1:trialNumber,1:2) = zeros;
     hemiIndex(1:trialNumber) = zeros;
-    flankerIndex(1:trialNumber) = zeros;
+    if nFlankerTilt == 2
+        flankerIndex(1:trialNumber) = zeros;
+    end
     stairOrder(1:trialNumber) = zeros;
+    crowd(1:trialNumber) = zeros; 
     
     %% instructions
     
     KbName('UnifyKeyNames');
     Screen('FillRect', w, grey);
     Screen('TextSize', w, []);
-    instText = [];
-
+    
+    imHolder = [0 0 1000 500];
+    [im, ~, ~] = CenterRect(imHolder, winRect); 
+    [img, ~, alpha] = imread('screens2.png');
+    img(:,:,4) = alpha; 
+    imageFinal = Screen('MakeTexture', w, img);
+    
     %Practice Instructions
     if blockNum == 0 
-        instText = ['Fixate on the center cross during the entire trial.\n'...
+        instText = ['Fixate on the center dot during the entire trial.\n'...
             'Press the LEFT ARROW KEY if the center bar\n'...
             'is tilted to the left (counterclockwise).\n'...
             'Press the RIGHT ARROW KEY if the center bar\n'...
@@ -186,6 +191,15 @@ try
     GetChar;
     Screen('TextSize', w, 20);
     Screen('Flip', w);
+    
+    if blockNum == 0
+        Screen('DrawTexture', w, imageFinal, [], im);
+        Screen('Flip', w);
+        FlushEvents('keyDown');
+        GetChar;
+        Screen('TextSize', w, 20);
+        Screen('Flip', w);
+    end
 
     activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
@@ -193,6 +207,7 @@ try
     %% main experiment
     
     while flag == 0 && trials < trialNumber % flag = 1 means that we've hit the upper limit
+        clear dstRects
         trials = trials + 1 
         WhichStair = randi(nStairDir*nHemi*nFlankerTilt); % which staircase to use
         stairOrder(trials) = WhichStair; 
@@ -202,16 +217,36 @@ try
         
         if WhichStair == 1 || WhichStair == 2
             hemiIndex(trials) = -1;
-            flankerIndex(trials) = -1;
+            if nFlankerTilt == 2
+                flankerIndex(trials) = -1;
+            end
+            if nCrowdLvl == 2
+                crowd = 0;
+            end
         elseif WhichStair == 3 || WhichStair == 4
             hemiIndex(trials) = -1;
-            flankerIndex(trials) = 1;
+            if nFlankerTilt == 2
+                flankerIndex(trials) = 1;
+            end
+            if nCrowdLvl == 2
+                crowd = 1;
+            end
         elseif WhichStair == 5 || WhichStair == 6
             hemiIndex(trials) = 1;
-            flankerIndex(trials) = -1;
+            if nFlankerTilt == 2
+                flankerIndex(trials) = -1;
+            end
+            if nCrowdLvl == 2
+                crowd = 0;
+            end
         else
             hemiIndex(trials) = 1;
-            flankerIndex(trials) = 1;
+            if nFlankerTilt == 2
+                flankerIndex(trials) = 1;
+            end
+            if nCrowdLvl == 2
+                crowd = 1;
+            end
         end
         
         priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
@@ -227,16 +262,33 @@ try
         % draw stimulus display
         % position the stimuli 
         dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); 
-            % above target
-        dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); 
-            % below target
+        upperBound = dstRects(2);
+        lowerBound = dstRects(4);
+        leftBound = dstRects(1);
+        rightBound = dstRects(3);
+        
+        if crowd
+            dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); 
+                % above target
+            dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); 
+                % below target
+            upperBound = dstRects(2,2);
+            lowerBound = dstRects(4,3);
+            leftBound = dstRects(1,3);
+            rightBound = dstRects(3,2);      
+        end
             
-        % position the mask
-        upperBound = dstRects(2,2);
-        lowerBound = dstRects(4,3);
-        leftBound = dstRects(1,3);
-        rightBound = dstRects(3,2);
+        % generate & position the mask
+        if crowd
+            nStimBar = 3;
+        else
+            nStimBar = 1;
+        end
+        maskBarLen = (barLen*barWid*nStimBar)/(maskBarWid*16); % you want the same nun of pixels on screen
+        maskBarLenPx = round(maskBarLen*ppd);
+        maskBar = ones(maskBarLenPx, maskBarWidPx);
+        maskBarTex = Screen('MakeTexture', w, maskBar);
+        maskTexrect = Screen('Rect', maskBarTex); % convert into rect
         nRow = 4;
         nCol = 4;  
         point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);
@@ -247,8 +299,14 @@ try
         
         % pick orientations
         r1(trials) = oriIndex(trials)*ori(WhichStair);
-        rotAngles = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
+        if crowd
+            rotAngles = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
+        else
+            rotAngles = r1(trials);
+        end
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
+        Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
+            30, 30, [255, 255, 255]);
         Screen('FillOval', w, white, FIXATION_POSITION, 10);
         Screen('Flip',w);
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
@@ -295,6 +353,14 @@ try
                 keypressed = 1;
             end
         end
+%         
+%         if ori(WhichStair) <= 3
+%             percChange = 0.4; % Livne & Sagi
+%         else
+%             percChange = 0.2;
+%         end
+        
+        percChange = 0.2;
         
         %staircase stuff
         if acc(trial(WhichStair),WhichStair) % IF CORRECT
@@ -311,11 +377,12 @@ try
                                                                                             % at reversal
                 end
                 %change stimulus to make stimulus harder
-                if ori(WhichStair) <= 5
-                    ori(WhichStair) = ori(WhichStair) - delta;
-                else
-                    ori(WhichStair) = ori(WhichStair) - 2*delta;
-                end
+                ori(WhichStair) = ori(WhichStair) - percChange*ori(WhichStair); % 20%, used by Livne/Sagi
+%                 if ori(WhichStair) <= 5
+%                     ori(WhichStair) = ori(WhichStair) - delta;
+%                 else
+%                     ori(WhichStair) = ori(WhichStair) - 2*delta;
+%                 end
                 if ori(WhichStair) < minori
                     ori(WhichStair) = minori;
                 end % can't be negative
@@ -330,11 +397,12 @@ try
                 stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus @ this reversal
             end
             %change stimulus to make stimulus easier
-            if ori(WhichStair) <= 5
-                ori(WhichStair)=ori(WhichStair) + delta;
-            else
-                ori(WhichStair) = ori(WhichStair) + 2*delta;
-            end
+            ori(WhichStair) = ori(WhichStair) + percChange*ori(WhichStair);
+%             if ori(WhichStair) <= 5
+%                 ori(WhichStair)=ori(WhichStair) + delta;
+%             else
+%                 ori(WhichStair) = ori(WhichStair) + 2*delta;
+%             end
             if ori(WhichStair) > maxori
                 ori(WhichStair) = maxori;
             end % max of 45
