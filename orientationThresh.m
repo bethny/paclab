@@ -4,11 +4,21 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
+% make it thinner, shorter, smaller flanker-target distance
+% see if you need a pure vertical line -- literature review 
+% maybe grasp placeholder should be the circle with a + inside
+
 % SUBJECTS
-% 1 Dan
-% 2 Bethany
-% 3 James
-% 4 Christian
+% 1 Sydney
+% 2 James
+% 3 Christian
+% 4 Bethany
+% 5 Jianfei
+% added baseline
+% 6 Andrea
+% 7 Ryan
+% 8 Sydney
+% 9 Bethany
 
 try
     VIEWING_DISTANCE_CM = 52;
@@ -16,8 +26,12 @@ try
     
     %% subject information %%%%%%%%%%%%%%%%%%%
     KbName('UnifyKeyNames')
+    
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
+    nStim = input('\n T1 and T2? 0 for no, 1 for yes: ');
+    lowContrast = input('\n Low contrast? 0 for no, 1 for yes: ');
+    
     oripath = pwd;
     addpath(genpath(oripath));
     %Create a directory for this subject's data if not a practice trial
@@ -25,6 +39,8 @@ try
         pathdata = strcat(pwd,filesep,'Subject_folders',filesep,num2str(subjNum),filesep);
         if ~exist(pathdata)
             mkdir(pathdata);
+        else
+            fprintf('This subject already exists.\n');
         end
         cd(pathdata);
         filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.txt');
@@ -83,18 +99,26 @@ try
     maxori = 20;
     minori = 0.5; % vertical
     ori = repmat([minori maxori],1,nHemi*nFlankerTilt*nCrowdLvl);    % 2 starting points
-    delta = 0.5;          % how much to change signal at reversals\
-    presentationDur = .2;
-    maskDur = .2;
+    delta = 0.5;          % how much to change signal at reversals
+    
+    presentationDur = .1;
+    
+    T1 = .1; 
+    ISI = .2;
+    T2 = .1;
     
     %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    barContrast = .7;
     
     fixRad = 0.2;  %radius of fixation spot
-    barWid = 0.3; % from bulakowski
-    barLen = 2.5; % from bulakowski
+%     barWid = 0.3; % from bulakowski
+    barWid = 0.1; 
+%     barLen = 2.5; % from bulakowski
+    barLen = 1.75;
     maskBarWid = 0.15;
     ecc = 14;
-    tfDist = 4; % distance between target + flanker
+%     tfDist = 4; % distance between target + flanker
+    tfDist = 3;
     markerWaitList = [0.75, 1, 1.25];
     mn = 3;     % the number of markerWait;
     
@@ -120,13 +144,16 @@ try
     barLenPx = round(barLen*ppd);
     barWidPx = round(barWid*ppd);
     maskBarWidPx = round(maskBarWid*ppd);
-   
     
     markerWaitIndex = repmat(markerWaitList,1,floor((trialNumber+mn)./mn));
     n = randperm(trialNumber);
     markerWait = markerWaitIndex(1,n);
     
-    barVert = ones(barLenPx, barWidPx); % assign pixel values for bar
+    if lowContrast
+        barVert = ones(barLenPx, barWidPx)*grey - barContrast*grey; % assign pixel values for bar
+    else
+        barVert = ones(barLenPx, barWidPx);
+    end
     barTexVert = Screen('MakeTexture', w, barVert); % convert into texture
     texrect = Screen('Rect', barTexVert); % convert into rect
     
@@ -192,7 +219,7 @@ try
     Screen('TextSize', w, 20);
     Screen('Flip', w);
     
-    if blockNum == 0
+    if blockNum == 0 && ~nStim
         Screen('DrawTexture', w, imageFinal, [], im);
         Screen('Flip', w);
         FlushEvents('keyDown');
@@ -255,43 +282,39 @@ try
         % show fixation cross
         Screen('FillRect', w, grey);
         % Draw fixation to indicate the start of the trial
-        Screen('FillOval', w, white,FIXATION_POSITION,10);
+        Screen('FillOval', w, 1*grey - barContrast*grey,FIXATION_POSITION,10);
         Screen('Flip',w);
         WaitSecs(markerWait(trials));
         
         % draw stimulus display
         % position the stimuli 
         dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        upperBound = dstRects(2);
-        lowerBound = dstRects(4);
-        leftBound = dstRects(1);
-        rightBound = dstRects(3);
+        dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2));
+        dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2));
         
-        if crowd
-            dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); 
-                % above target
-            dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); 
-                % below target
-            upperBound = dstRects(2,2);
-            lowerBound = dstRects(4,3);
-            leftBound = dstRects(1,3);
-            rightBound = dstRects(3,2);      
+        upperBound = dstRects(2,2);
+        lowerBound = dstRects(4,3);
+        leftBound = dstRects(1,3);
+        rightBound = dstRects(3,2);
+        
+        if ~crowd
+            dstRects = dstRects(:,1);
         end
             
         % generate & position the mask
-        if crowd
-            nStimBar = 3;
-        else
-            nStimBar = 1;
-        end
-        maskBarLen = (barLen*barWid*nStimBar)/(maskBarWid*16); % you want the same nun of pixels on screen
-        maskBarLenPx = round(maskBarLen*ppd);
-        maskBar = ones(maskBarLenPx, maskBarWidPx);
-        maskBarTex = Screen('MakeTexture', w, maskBar);
-        maskTexrect = Screen('Rect', maskBarTex); % convert into rect
         nRow = 4;
         nCol = 4;  
         point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);
+        nStimBar = 3;
+        maskBarLen = (barLen*barWid*nStimBar)/(maskBarWid*length(point)); % you want the same nun of pixels on screen
+        maskBarLenPx = round(maskBarLen*ppd);
+        if lowContrast
+            maskBar = ones(maskBarLenPx, maskBarWidPx)*grey - barContrast*grey;
+        else
+            maskBar = ones(maskBarLenPx, maskBarWidPx);
+        end
+        maskBarTex = Screen('MakeTexture', w, maskBar);
+        maskTexrect = Screen('Rect', maskBarTex); % convert into rect
         
         % position the circle mask
         circDstRects = CenterRectOnPoint(circrect, xCen + eccPx*hemiIndex(trials), yCen); 
@@ -301,29 +324,50 @@ try
         r1(trials) = oriIndex(trials)*ori(WhichStair);
         if crowd
             rotAngles = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
+            rotAnglesT2 = [0 rotAngles(2:3)];
         else
             rotAngles = r1(trials);
+            rotAnglesT2 = 0;
         end
+        
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
 %         Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
 %             30, 30, [255, 255, 255]);
-        Screen('FillOval', w, white, FIXATION_POSITION, 10);
+        Screen('FillOval', w, 1*grey - barContrast*grey, FIXATION_POSITION, 10);
         Screen('Flip',w);
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
-        WaitSecs(presentationDur);
-        
+               
         % draw mask display
-        for i = 1:length(point)
-            maskDstRects(:,i) = CenterRectOnPoint(maskTexrect, point(i,1)+randi([-30 30]), point(i,2)+randi([-30 30]));
+        if ~nStim
+            WaitSecs(presentationDur);
+            
+            if ~lowContrast
+                for i = 1:length(point)
+                    maskDstRects(:,i) = CenterRectOnPoint(maskTexrect, point(i,1)+randi([-30 30]), point(i,2)+randi([-30 30]));
+                end
+                maskRotAngles = randi(360,1,length(point));
+                Screen('FillOval', w, white,FIXATION_POSITION,10);
+                Screen('DrawTextures', w, maskBarTex, [], maskDstRects, maskRotAngles);
+                Screen('Flip',w);
+                WaitSecs(maskDur);
+            end
+        else
+            WaitSecs(T1);
+            
+            Screen('FillOval', w, 1*grey - barContrast*grey,FIXATION_POSITION,10);
+            Screen('Flip',w);
+            WaitSecs(ISI);
+            
+            Screen('DrawTextures', w, barTexVert, [], dstRects, rotAnglesT2);
+            Screen('FillOval', w, 1*grey - barContrast*grey,FIXATION_POSITION,10);
+            Screen('Flip',w);
+            WaitSecs(T2);
         end
-        maskRotAngles = randi(360,1,length(point));
-        Screen('FillOval', w, white,FIXATION_POSITION,10);
-        Screen('DrawTextures', w, maskBarTex, [], maskDstRects, maskRotAngles);
-        Screen('Flip',w);
-        WaitSecs(maskDur);
         
-        Screen('FillOval', w, white,FIXATION_POSITION,10);
-        Screen('FrameOval', w, [], circDstRects);
+        Screen('FillOval', w, 1*grey - barContrast*grey,FIXATION_POSITION,10);
+        Screen('FrameOval', w, 1*grey - barContrast*grey, circDstRects);
+        Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 0);
+        Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 90);
         Screen('Flip',w);
         
         keypressed = 0;
@@ -353,16 +397,9 @@ try
                 keypressed = 1;
             end
         end
-%         
-%         if ori(WhichStair) <= 3
-%             percChange = 0.4; % Livne & Sagi
-%         else
-%             percChange = 0.2;
-%         end
-        
-        percChange = 0.2;
         
         %staircase stuff
+        percChange = 0.2; % 20%, used by Livne/Sagi
         if acc(trial(WhichStair),WhichStair) % IF CORRECT
             Beeper(1000); %play high beep for correct answer
             stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
@@ -373,16 +410,10 @@ try
                 if stairdir(WhichStair) == 1 % if stair direction is currently UP (= 1) this is a reversal
                     stairdir(WhichStair) = 0; % stair direction changes to DOWN
                     nReverse(WhichStair) = nReverse(WhichStair) + 1; % count reversal
-                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value (stairStep) 
-                                                                                            % at reversal
+                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value (stairStep)                                                                         % at reversal
                 end
                 %change stimulus to make stimulus harder
-                ori(WhichStair) = ori(WhichStair) - percChange*ori(WhichStair); % 20%, used by Livne/Sagi
-%                 if ori(WhichStair) <= 5
-%                     ori(WhichStair) = ori(WhichStair) - delta;
-%                 else
-%                     ori(WhichStair) = ori(WhichStair) - 2*delta;
-%                 end
+                ori(WhichStair) = ori(WhichStair) - percChange*ori(WhichStair); 
                 if ori(WhichStair) < minori
                     ori(WhichStair) = minori;
                 end % can't be negative
@@ -398,11 +429,6 @@ try
             end
             %change stimulus to make stimulus easier
             ori(WhichStair) = ori(WhichStair) + percChange*ori(WhichStair);
-%             if ori(WhichStair) <= 5
-%                 ori(WhichStair)=ori(WhichStair) + delta;
-%             else
-%                 ori(WhichStair) = ori(WhichStair) + 2*delta;
-%             end
             if ori(WhichStair) > maxori
                 ori(WhichStair) = maxori;
             end % max of 45
@@ -412,8 +438,8 @@ try
         ListenChar(2); %enables keyboard, no output to command window
         
         % test whether to end experiment
-        if (nReverse(1) > 9 &&  nReverse(2) > 9 &&  nReverse(3) > 9 &&  nReverse(4) > 9 &&  nReverse(5) > 9 ...
-             &&  nReverse(6) > 9 &&  nReverse(7) > 9 &&  nReverse(8) > 9) || trial(1) > 100 || trial(2) > 100 ...
+        if (nReverse(1) > 8 &&  nReverse(2) > 8 &&  nReverse(3) > 8 &&  nReverse(4) > 8 &&  nReverse(5) > 8 ...
+             &&  nReverse(6) > 8 &&  nReverse(7) > 8 &&  nReverse(8) > 8) || trial(1) > 100 || trial(2) > 100 ...
              || trial(3) > 100 || trial(4) > 100 || trial(5) > 100 || trial(6) > 100 || trial(7) > 100 ...
              || trial(8) > 100
             flag = 1;
@@ -458,8 +484,9 @@ try
         save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
             'flankerIndex','stairOrder');
         
-        plot(stimulusReversal(1,1:nReverse(1)));hold on;
-        plot(stimulusReversal(2,1:nReverse(2)));hold on;
+        for i = 1:8
+            plot(stimulusReversal(i,1:nReverse(i)));hold on;
+        end
     end
     cd(oripath);
     
