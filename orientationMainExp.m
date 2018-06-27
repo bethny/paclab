@@ -29,7 +29,9 @@ try
     
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
-
+    nStim = input('\n T1 and T2? 0 for no, 1 for yes: ');
+%     lowContrast = input('\n Low contrast? 0 for no, 1 for yes: ');
+    
     oripath = pwd;
     addpath(genpath(oripath));
     %Create a directory for this subject's data if not a practice trial
@@ -51,7 +53,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    Screen('Preference', 'SkipSyncTests', 1);
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -73,7 +75,8 @@ try
     %% staircase value
     
     nStairDir = 2;
-    nHemi = 1;
+    nHemi = 2;
+%     nFlankerTilt = 2;
     nFlankerTilt = 1; % 1 staircase for both
     nCrowdLvl = 2;
     nStaircase = nStairDir*nHemi*nFlankerTilt*nCrowdLvl;
@@ -98,14 +101,14 @@ try
     ori = repmat([minori maxori],1,nHemi*nFlankerTilt*nCrowdLvl);    % 2 starting points
     delta = 0.5;          % how much to change signal at reversals
     
+    presentationDur = .1;
+    
     T1 = .1; 
-    ISI = .15;
+    ISI = .2;
     T2 = .1;
-    postStim = .05;
     
     %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     barContrast = .7;
-    stimColor = 1*grey - barContrast*grey;
     
     fixRad = 0.2;  %radius of fixation spot
     barWid = 0.1; 
@@ -155,7 +158,9 @@ try
     rt(1:trialNumber,1:2) = zeros;
     Keyresponse(1:trialNumber,1:2) = zeros;
     hemiIndex(1:trialNumber) = zeros;
-    flankerIndex(1:trialNumber) = zeros;
+    if nFlankerTilt == 2
+        flankerIndex(1:trialNumber) = zeros;
+    end
     stairOrder(1:trialNumber) = zeros;
     crowd(1:trialNumber) = zeros; 
     
@@ -202,7 +207,7 @@ try
     Screen('TextSize', w, 20);
     Screen('Flip', w);
     
-    if blockNum == 0
+    if blockNum == 0 && ~nStim
         Screen('DrawTexture', w, imageFinal, [], im);
         Screen('Flip', w);
         FlushEvents('keyDown');
@@ -265,7 +270,7 @@ try
         % show fixation cross
         Screen('FillRect', w, grey);
         % Draw fixation to indicate the start of the trial
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+        Screen('FillOval', w, 1*grey - barContrast*grey,FIXATION_POSITION,10);
         Screen('Flip',w);
         WaitSecs(markerWait(trials));
         
@@ -283,8 +288,23 @@ try
         if ~crowd
             dstRects = dstRects(:,1);
         end
+            
+        % generate & position the mask
+        nRow = 4;
+        nCol = 4;  
+        point = gridGen(nRow, nCol, upperBound, lowerBound, leftBound, rightBound);
+        nStimBar = 3;
+        maskBarLen = (barLen*barWid*nStimBar)/(maskBarWid*length(point)); % you want the same nun of pixels on screen
+        maskBarLenPx = round(maskBarLen*ppd);
+        if lowContrast
+            maskBar = ones(maskBarLenPx, maskBarWidPx)*grey - barContrast*grey;
+        else
+            maskBar = ones(maskBarLenPx, maskBarWidPx);
+        end
+        maskBarTex = Screen('MakeTexture', w, maskBar);
+        maskTexrect = Screen('Rect', maskBarTex); % convert into rect
         
-        % position the grasp circle
+        % position the circle mask
         circDstRects = CenterRectOnPoint(circrect, xCen + eccPx*hemiIndex(trials), yCen); 
         circColor = [0 0 0 150]; 
         
@@ -299,16 +319,27 @@ try
         end
         
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
-        Screen('FillOval', w, stimColor, FIXATION_POSITION, 10);
+%         Screen('DrawText', w, sprintf('%g, stair = %d, correct = %d',r1(trials),WhichStair,stairCorrect(WhichStair)), ...
+%             30, 30, [255, 255, 255]);
+        Screen('FillOval', w, 1*grey - barContrast*grey, FIXATION_POSITION, 10);
         Screen('Flip',w);
-        stimulus_onset_time(trials) = tic; % Mark the time when the display went up
+        stimulus_onset_time(trials) = tic; % Mark the time when the display went up        
         WaitSecs(T1);
+
+        Screen('FillOval', w, 1*grey - barContrast*grey, FIXATION_POSITION,10);
+        Screen('Flip',w);
+        WaitSecs(ISI);
+
+        Screen('DrawTextures', w, barTexVert, [], dstRects, rotAnglesT2);
+        Screen('FillOval', w, 1*grey - barContrast*grey, FIXATION_POSITION,10);
+        Screen('Flip',w);
+        WaitSecs(T2);
         
         Screen('Flip',w);
-        WaitSecs(ISI + T2 + postStim);
+        WaitSecs(postStim);
         
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('FrameOval', w, stimColor, circDstRects);
+        Screen('FillOval', w, 1*grey - barContrast*grey,FIXATION_POSITION,10);
+        Screen('FrameOval', w, 1*grey - barContrast*grey, circDstRects);
         Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 0);
         Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 90);
         Screen('Flip',w);
