@@ -51,7 +51,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    Screen('Preference', 'SkipSyncTests', 1);
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -90,6 +90,7 @@ try
     nReverse = zeros(1,nStaircase);  % counts the number of reversals each staircase
     stairCorrect = zeros(1,nStaircase); % counts # correct in a row each staircase
     trial = zeros(1,nStaircase); % zero trial counters 2 staircases
+    realTrial = zeros(1,nStaircase); 
     stimulusReversal = zeros(nStaircase,20); % matrix with stimulus setting at staircase reversals
     rspKey = zeros(1,trialNumber);
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
@@ -209,14 +210,14 @@ try
     Screen('TextSize', w, 20);
     Screen('Flip', w);
     
-    if blockNum == 0
-        Screen('DrawTexture', w, imageFinal, [], im);
-        Screen('Flip', w);
-        FlushEvents('keyDown');
-        GetChar;
-        Screen('TextSize', w, 20);
-        Screen('Flip', w);
-    end
+%     if blockNum == 0
+%         Screen('DrawTexture', w, imageFinal, [], im);
+%         Screen('Flip', w);
+%         FlushEvents('keyDown');
+%         GetChar;
+%         Screen('TextSize', w, 20);
+%         Screen('Flip', w);
+%     end
 
     activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
@@ -232,6 +233,9 @@ try
         crowd(trials) = crowdLvl(WhichStair);
         stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
+        if hemiIndex(trials) > 0
+            realTrial(WhichStair) = realTrial(WhichStair) + 1;
+        end
         
         priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
         Priority(priorityLevel);
@@ -257,11 +261,7 @@ try
         if ~crowd(trials)
             dstRects = dstRects(:,1);
         end
-        
-        % position the grasp circle
-        circDstRects = CenterRectOnPoint(circrect, xCen + eccPx*hemiIndex(trials), yCen); 
-        circColor = [0 0 0 150]; 
-        
+
         % pick orientations
         r1(trials) = oriIndex(trials)*ori(WhichStair);
         if crowd(trials)
@@ -278,14 +278,39 @@ try
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
         WaitSecs(T1);
         
-        Screen('Flip',w);
-        WaitSecs(ISI + T2 + postStim);
-        
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('FrameOval', w, stimColor, circDstRects);
-        Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 0);
-        Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 90);
         Screen('Flip',w);
+        
+        tic
+        % NOISE CIRCLE
+        circRect = SetRect(0,0, barLenPx, barLenPx);
+        cDstRects(:,1) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
+        if crowd(trials)
+            cDstRects(:,2) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
+                yCen - tfDistPx/sqrt(2));
+            cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
+                yCen + tfDistPx/sqrt(2));
+        end
+        aperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
+        Screen('FillOval', aperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
+        Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+%         Screen('Flip', w);
+        
+        AssertOpenGL;
+        contrast = 0.5;
+        tex = CreateProceduralNoise(w, barLenPx, barLenPx, 'Perlin', [0.5 0.5 0.5 0.0]);
+        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [], [], [], repmat([contrast, 0, 0, 0],3,1)');
+        Screen('DrawTextures', w, aperture, [], cDstRects, [], 0);        
+        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+%         Screen('FrameOval', w, stimColor, circDstRects);
+%         Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 0);
+%         Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 90);
+        
+        diff = ISI + T2 + postStim - toc;
+        WaitSecs(diff);
+        Screen('Flip',w);
+        
+        clear cDstRects
         
         keypressed = 0;
         while ~keypressed
@@ -319,44 +344,48 @@ try
         percChange = 0.2; % 20%, used by Livne/Sagi
         if acc(trial(WhichStair),WhichStair) % IF CORRECT
             Beeper(1000); %play high beep for correct answer
-            stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
-            if stairCorrect(WhichStair) == 3   % time to make stimulus harder?
-                stairCorrect(WhichStair) = 0;  % zero counter
-                
-                % STAIRCASE DIRECTION FLAGS: 0 = down (getting harder), 1 = up (getting easier)
-                if stairdir(WhichStair) == 1 % if stair direction is currently UP (= 1) this is a reversal
-                    stairdir(WhichStair) = 0; % stair direction changes to DOWN
-                    nReverse(WhichStair) = nReverse(WhichStair) + 1; % count reversal
-                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value ...
-                        % (stairStep) at reversal
+            if hemiIndex(trials) > 0
+                stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
+                if stairCorrect(WhichStair) == 3   % time to make stimulus harder?
+                    stairCorrect(WhichStair) = 0;  % zero counter
+
+                    % STAIRCASE DIRECTION FLAGS: 0 = down (getting harder), 1 = up (getting easier)
+                    if stairdir(WhichStair) == 1 % if stair direction is currently UP (= 1) this is a reversal
+                        stairdir(WhichStair) = 0; % stair direction changes to DOWN
+                        nReverse(WhichStair) = nReverse(WhichStair) + 1; % count reversal
+                        stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus value ...
+                            % (stairStep) at reversal
+                    end
+                    %change stimulus to make stimulus harder
+                    ori(WhichStair) = ori(WhichStair) - percChange*ori(WhichStair); 
+                    if ori(WhichStair) < minori
+                        ori(WhichStair) = minori;
+                    end % can't be negative
                 end
-                %change stimulus to make stimulus harder
-                ori(WhichStair) = ori(WhichStair) - percChange*ori(WhichStair); 
-                if ori(WhichStair) < minori
-                    ori(WhichStair) = minori;
-                end % can't be negative
             end
             
         else %incorrect response
             Beeper(500);
-            stairCorrect(WhichStair) = 0;
-            if stairdir(WhichStair) == 0
-                stairdir(WhichStair) = 1;   % change direction to UP
-                nReverse(WhichStair) = nReverse(WhichStair) + 1; % count reversal
-                stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus @ this reversal
+            if hemiIndex(trials) > 0
+                stairCorrect(WhichStair) = 0;
+                if stairdir(WhichStair) == 0
+                    stairdir(WhichStair) = 1;   % change direction to UP
+                    nReverse(WhichStair) = nReverse(WhichStair) + 1; % count reversal
+                    stimulusReversal(WhichStair, nReverse(WhichStair)) = ori(WhichStair); % record stimulus @ this reversal
+                end
+                %change stimulus to make stimulus easier
+                ori(WhichStair) = ori(WhichStair) + percChange*ori(WhichStair);
+                if ori(WhichStair) > maxori
+                    ori(WhichStair) = maxori;
+                end % max of 45
             end
-            %change stimulus to make stimulus easier
-            ori(WhichStair) = ori(WhichStair) + percChange*ori(WhichStair);
-            if ori(WhichStair) > maxori
-                ori(WhichStair) = maxori;
-            end % max of 45
         end
         
         ListenChar(0); %disables keyboard and flushes.
         ListenChar(2); %enables keyboard, no output to command window
         
         % test whether to end experiment
-        if (sum(nReverse > 8) == nStaircase) || (sum(trial > 100) > 0)
+        if (sum(nReverse > 8) == nStaircase) || (sum(realTrial > 100) > 0)
             flag = 1;
         else
             if trials == 200 || trials == 400 || trials == 600
