@@ -9,14 +9,16 @@
 % 7 Ryan
 % 8 Sydney
 % 9 Bethany
+% made noise mask, collapsed to 1 hemifield
+% 10 Jianfei
+% 11 Andrea
+% 12 Bethany
+% 13 Amos
 
 % calculate w/in subjects left-right hemifield threshold difference 
 % code T1 T2 - check jianfei's thing & Bekkering paper orientation change
 % detection to avoid apparent motion 
 % maybe reduce cntrast instead of mask? 
-
-% move target such that its only in the upper hemifield at various radial
-% positions
 
 %%
 clear all
@@ -25,28 +27,43 @@ close all
 parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 dataDir = sprintf('%s/Subject_folders',parentDir);
+dataset = 3;
 
-nCnd = 8; % num staircases
 subj = sort(strsplit(ls(dataDir)));
-subj = subj(2:end-3); % ALL SUBJ
-% subj = subj(2:5); % NO BASELINE
-subj = subj(6:end); % WITH BASELINE
+subj = subj(5:end); % ALL SUBJ
+if dataset == 1
+    subj = subj(2:5); % NO BASELINE
+    idx = 18;
+elseif dataset == 2
+    subj = subj(6:9); % WITH BASELINE
+    idx = 18;
+elseif dataset == 3
+    subj = subj(10:end); % WITH BASELINE, NOISE MASK
+    idx = 19;
+end
 
 for s = 1:length(subj)
     curSubj = subj{s};
-    file = mySubFiles(sprintf('%s/%s',dataDir,curSubj),'.m',18);
-    data = load(file{:});
+    subjNum = str2num(curSubj(2:3));
+    data = load(sprintf('%s/%s/%dblock1_threshold_all.mat',dataDir,curSubj,subjNum));
+    
+    if dataset == 3
+        nStaircase = data.nStaircase;
+    else
+        nStaircase = 8;
+    end
     
     stimRev = data.stimulusReversal;   
     nReverse(s,:) = data.nReverse;
-    trialsPerStair = data.trial;
+    if idx == 18
+        trialsPerStair = data.trial;
+    else
+        trialsPerStair = data.realTrial;
+    end
     acc = data.acc;
     acc = acc(1:max(trialsPerStair),:); % already split up by staircase
     
-    for i = 1:nCnd % num staircases
-        accVec = acc(1:trialsPerStair(i),i);
-        accuracy(s,i) = sum(accVec)/trialsPerStair(i);
-        
+    for i = 1:nStaircase % num staircases 
         finalRev(s,i) = stimRev(i,nReverse(s,i));
         final6Rev(:,i,s) = stimRev(i,nReverse(s,i)-5:nReverse(s,i));
         
@@ -195,54 +212,142 @@ cndNames = {'Subj 1' 'Subj 2' 'Subj 3' 'Subj 4'};
 gcaOpts = {'XTick',1:4,'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
 
-%% REORGANIZING & COLLAPSING DATA
+% REORGANIZING & COLLAPSING DATA
 
-updownMean = [mean(finalRev(:,1:2),2), mean(finalRev(:,3:4),2), mean(finalRev(:,5:6),2), mean(finalRev(:,7:8),2)];
-sepCrwd = [updownMean(:,1) updownMean(:,3) updownMean(:,2) updownMean(:,4)];
-
-%% PLOT: LEFT-RIGHT WITHIN SUBJECT COMPARISON
-
-x = final6Rev(:,:,1);
-y = LRdiff(:,:,1);
-
-UDmean = [mean(final6Rev(:,1:2,:),2), mean(final6Rev(:,3:4,:),2), mean(final6Rev(:,5:6,:),2), mean(final6Rev(:,7:8,:),2)];
-% 6 x 4 x 4: reversals x staircases x subjects
-
-LRdiff2 = [UDmean(:,3,:)-UDmean(:,1,:), UDmean(:,4,:)-UDmean(:,2,:)];
-% 6 x 2 x 4: reversals x staircases x subjects
-
-meanLRdiff2 = mean(LRdiff2,1);
-
-%%
+if dataset == 3
+    sepCrwd = [mean(finalRev(:,1:2),2), mean(finalRev(:,3:4),2)];
+    for i = 1:size(final6Rev,3)
+        curNC = final6Rev(:,1:2,i);
+        curC = final6Rev(:,3:4,i);
+        avgData(i,:) = [mean2(curNC) mean2(curC)];
+        semData(i,:) = [std2(curNC) std2(curC)]/sqrt(length(curNC)*2);
+    end
+elseif dataset == 2
+    for i = 1:size(final6Rev,2)/2
+        LRdiff(:,i,:) = final6Rev(:,i+4,:) - final6Rev(:,i,:);    
+    end
+    withinSubjAvgLR = squeeze(mean(LRdiff,1))';
+    withinSubjSEMLR = squeeze(std(LRdiff,1)/sqrt(size(LRdiff,1)))';
+    
+    for j = 1:size(LRdiff,3)
+        UD(:,:,j) = [LRdiff(:,1,j), LRdiff(:,3,j); LRdiff(:,2,j), LRdiff(:,4,j)]; 
+    end
+    avgDataLR = squeeze(mean(UD,1))';
+    semDataLR = squeeze(std(UD,1)/sqrt(size(UD,1)))';
+    
+    final6avg = squeeze(mean(final6Rev,1))';
+    updownMean = [mean(final6avg(:,1:2),2), mean(final6avg(:,3:4),2), mean(final6avg(:,5:6),2), mean(final6avg(:,7:8),2)];
+    avgData = [updownMean(:,1) updownMean(:,3) updownMean(:,2) updownMean(:,4)]; % subj x staircase
+else
+    counter = 0;
+    for i = [1 2 5 6]
+        counter = counter + 1;
+        LRFlankerdiff(:,counter,:) = final6Rev(:,i+2,:) - final6Rev(:,i,:);    
+    end
+    withinSubjAvgLR = squeeze(mean(LRFlankerdiff,1))';
+    
+    avgDataLR = [mean(withinSubjAvgLR(:,1:2),2), mean(withinSubjAvgLR(:,3:4),2)];
+    for j = 1:size(LRFlankerdiff,3)    
+        xx(:,:,j) = [LRFlankerdiff(:,1,j), LRFlankerdiff(:,3,j); LRFlankerdiff(:,2,j), LRFlankerdiff(:,4,j)]; 
+        for i = 1:2
+            semDataLR(j,i) = std(xx(:,i,j))/sqrt(size(xx,1));
+        end
+    end
+    
+    final6avg = squeeze(mean(final6Rev,1))';
+    updownMean = [mean(final6avg(:,1:2),2), mean(final6avg(:,3:4),2), mean(final6avg(:,5:6),2), mean(final6avg(:,7:8),2)];
+    avgData = [updownMean(:,1) updownMean(:,3) updownMean(:,2) updownMean(:,4)]; % subj x staircase
+end
 
 % final6Rev: reversals x staircases x subjects
-for i = 1:size(final6Rev,2)/2
-    LRdiff(:,i,:) = final6Rev(:,i+4,:) - final6Rev(:,i,:);
+
+%% PLOT THRESHOLDS
+close all
+if nStaircase == 4
+    cndNames = {'No crowding','Crowding'};
+elseif dataset == 2
+    cndNames = {'L/NC','R/NC','L/C','R/C'};
+else
+    cndNames = {'L hemi/L flank.','L hemi/R flank.','R hemi/L flank.','R hemi/R flank.'};
 end
-
-withinSubjAvg = squeeze(mean(LRdiff,1))';
-withinSubjSEM = squeeze(std(LRdiff,1)/sqrt(size(LRdiff,1)))';
-
-for j = 1:size(LRdiff,3)
-    UD(:,:,j) = [LRdiff(:,1,j), LRdiff(:,3,j); LRdiff(:,2,j), LRdiff(:,4,j)]; 
-end
-withinSubjUDAvg = squeeze(mean(UD,1))';
-withinSubjUDSEM = squeeze(std(UD,1)/sqrt(size(UD,1)))';
-
-%%
-cndNames = {'D/NC','U/NC','D/C','U/C'};
-gcaOpts = {'XTick',1:nCnd,'XTickLabel',cndNames,'box',...
+gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
 
 figure
-bar(withinSubjAvg')
+h = bar(avgData'); 
+h(1).FaceColor = [135,205,215]/255;
+h(2).FaceColor = [240,59,37]/255;
+h(3).FaceColor = [250,185,219]/255;
+% h(4).FaceColor = [250,185,219]/255;
+% h(4).FaceColor = [118,187,213]/255;
+h(4).FaceColor = [28 15 142]/255;
+if dataset == 3
+    hold on;
+    ngroups = size(avgData, 2);
+    nbars = size(avgData, 1);
+    groupwidth = min(0.8, nbars/(nbars + 1.5));
+    for i = 1:nbars
+        x = (1:ngroups) - (groupwidth/2) + (2*i-1) * (groupwidth / (2*nbars));
+        errorbar(x, avgData(i,:), semData(i,:), 'k', 'linestyle', 'none');
+    end
+    legend({subj{:}, 'SEM'},'AutoUpdate','off','location','northeast');
+else
+    legend({subj{:}},'AutoUpdate','off','location','northeast');
+end
+set(gca,gcaOpts{:})
+title('Avg of last 6 reversal values, avged over up/down staircases')
+xlabel('Crowding condition')
+ylabel('Avg threshold (deg)')
+ylim([0 20])
+
+%% PLOT: LEFT-RIGHT WITHIN SUBJECT COMPARISON
+
+if dataset == 1
+    cndNames = {'Left hemi','Right hemi'};
+    titleTxt = 'Left-right flanker tilt comparisons, avged over last 6 reversals';
+elseif dataset == 2
+    cndNames = {'No crowding','Crowding'};
+    titleTxt = 'Left-right hemifield comparisons, avged over last 6 reversals';
+end
+gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
+    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
+
+figure
+h = bar(avgDataLR');
+h(1).FaceColor = [135,205,215]/255;
+h(2).FaceColor = [240,59,37]/255;
+h(3).FaceColor = [250,185,219]/255;
+h(4).FaceColor = [28 15 142]/255;
 hold on;
-ngroups = size(withinSubjAvg, 2);
-nbars = size(withinSubjAvg, 1);
+ngroups = size(avgDataLR, 2);
+nbars = size(avgDataLR, 1);
 groupwidth = min(0.8, nbars/(nbars + 1.5));
 for i = 1:nbars
     x = (1:ngroups) - (groupwidth/2) + (2*i-1) * (groupwidth / (2*nbars));
-    errorbar(x, withinSubjAvg(i,:), withinSubjSEM(i,:), 'k', 'linestyle', 'none');
+    errorbar(x, avgDataLR(i,:), semDataLR(i,:), 'k', 'linestyle', 'none');
+end
+legend(subj,'AutoUpdate','off','location','southeast');
+set(gca,gcaOpts{:})
+title(titleTxt)
+xlabel('Condition/Staircase')
+ylabel('Threshold difference')
+ylim([-10 10])
+
+%% OLD PLOTS W/O U/D AVERAGING
+
+cndNames = {'D/NC','U/NC','D/C','U/C'};
+gcaOpts = {'XTick',1:nStaircase,'XTickLabel',cndNames,'box',...
+    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
+
+figure
+bar(withinSubjAvgLR')
+hold on;
+ngroups = size(withinSubjAvgLR, 2);
+nbars = size(withinSubjAvgLR, 1);
+groupwidth = min(0.8, nbars/(nbars + 1.5));
+for i = 1:nbars
+    x = (1:ngroups) - (groupwidth/2) + (2*i-1) * (groupwidth / (2*nbars));
+    errorbar(x, withinSubjAvgLR(i,:), withinSubjSEMLR(i,:), 'k', 'linestyle', 'none');
 end
 legend(subj,'AutoUpdate','off','location','northeast');
 set(gca,gcaOpts{:})
@@ -252,7 +357,7 @@ ylabel('Threshold difference')
 ylim([-10 10])
 
 cndNames = {'NC','C'};
-gcaOpts = {'XTick',1:nCnd,'XTickLabel',cndNames,'box',...
+gcaOpts = {'XTick',1:nStaircase,'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
 
 figure
@@ -271,20 +376,6 @@ title('Left-right hemifield bias comparisons, avged over last 6 reversals')
 xlabel('Condition/Staircase')
 ylabel('Threshold difference')
 ylim([-10 10])
-
-%% PLOT THRESHOLDS
-cndNames = {'L/NC','R/NC','L/C','R/C'};
-gcaOpts = {'XTick',1:nCnd,'XTickLabel',cndNames,'box',...
-    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
-
-figure
-bar(sepCrwd'); 
-legend(subj,'AutoUpdate','off','location','northeast');
-set(gca,gcaOpts{:})
-title('Avg of last 6 reversal values, avged over stair dir')
-xlabel('Condition/Staircase')
-ylabel('Avg threshold (deg)')
-ylim([0 20])
 
 %% PLOT / for all trials w + flankers, how many - press?
 figure
@@ -381,7 +472,7 @@ hold off
 %% PLOTS / BAR OF AVG REVERSAL VALUE (THRESHOLD)
 % cndNames = {'D/L/-','U/L/-','D/L/+','U/L/+','D/R/-','U/R/-','D/R/+','U/R/+'};
 cndNames = {'D/L/NC','U/L/NC','D/L/C','U/L/C','D/R/NC','U/R/NC','D/R/C','U/R/C'};
-gcaOpts = {'XTick',1:nCnd,'XTickLabel',cndNames,'box',...
+gcaOpts = {'XTick',1:nStaircase,'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
 
 figure
@@ -405,7 +496,7 @@ ylabel('Avg threshold (deg)')
 ylim([0 20])
 
 cndNames = {'L/NC','R/NC','L/C','R/C'};
-gcaOpts = {'XTick',1:nCnd,'XTickLabel',cndNames,'box',...
+gcaOpts = {'XTick',1:nStaircase,'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
 figure
 bar(sepCrwd'); 
@@ -451,45 +542,8 @@ bar(subjStairMean)
 hold on
 errorbar(1:8,subjStairMean,subjStairDev,'.')
 
-%%
-figure
-hold on
-for i = 2:size(finalRev,1)
-    plot(finalRev(i,:),'o')
-end
-
-% available variables: 
-% trials
-% nReverse
-% trial
-% stimulusReversal
-% rspKey
-% hemiIndex
-% flankerIndex
-% acc
-% stairOrder
-
-% TO DO: cross-correlate stairOrder and acc, hemiIndex and acc,
-% flankerIndex and acc, hemiIndex and flankerIndex and acc to spot trends
-
-% PUT BACK IN WHEN BLOCKS ARE A THING
-%     blocks = mySubFiles(sprintf('%s/%s',dataDir,curSubj),'.m',18);
-%     for i = 1:length(blocks)
-%         data = load(blocks{i});
-%         stimRev = data.stimulusReversal;
-%         for j = 1:size(stimRev,1)
-%             finalRev(j) = stimRev(j,max(find(stimRev(j,:) ~= 0)));
-%         end
-%         avgRev(i) = mean(finalRev);
-%     end
-%     allAvgRev(s,:) = avgRev;
 %% DEVELOPMENT
 
-for i = 1:8 % num staircases
-    accVec = acc(1:trialsPerStair(i),i);
-    accuracy(i) = sum(accVec)/trialsPerStair(i);
-end
-%%
 i = 1;
 data = load(blocks{i});
 stimRev = data.stimulusReversal;

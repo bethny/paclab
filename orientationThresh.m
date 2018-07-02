@@ -4,9 +4,7 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
-% make it thinner, shorter, smaller flanker-target distance
 % see if you need a pure vertical line -- literature review 
-% maybe grasp placeholder should be the circle with a + inside
 
 % SUBJECTS
 % 1 Sydney
@@ -19,6 +17,11 @@
 % 7 Ryan
 % 8 Sydney
 % 9 Bethany
+% made noise mask
+% 10 Jianfei
+% 11 Andrea
+% 12 Bethany
+% 13 Amos
 
 try
     VIEWING_DISTANCE_CM = 52;
@@ -34,7 +37,7 @@ try
     addpath(genpath(oripath));
     %Create a directory for this subject's data if not a practice trial
     if blockNum
-        pathdata = strcat(pwd,filesep,'Subject_folders',filesep,num2str(subjNum),filesep);
+        pathdata = strcat(pwd,filesep,'Subject_folders',filesep,'S0',num2str(subjNum),filesep);
         if ~exist(pathdata)
             mkdir(pathdata);
         else
@@ -51,14 +54,14 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-%     Screen('Preference', 'SkipSyncTests', 1);
+    Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
         Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
     end
     [xCen, yCen] = RectCenter(winRect);
-    [swidth, sheight]=Screen('WindowSize', WhichScreen);
+    [swidth, ~] = Screen('WindowSize', WhichScreen);
     screenCenter = [xCen yCen];
     screenInfo.center = screenCenter;
     degPerPixel = atan((MONITOR_WIDTH_CM/2)/VIEWING_DISTANCE_CM) * (180/pi) * (2/swidth);
@@ -70,7 +73,7 @@ try
     secPerFrame = Screen('GetFlipInterval',w);
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
     
-    %% staircase value
+    %% staircase settings
     
     nStairDir = 2;
     nHemi = 1;
@@ -78,38 +81,35 @@ try
     nCrowdLvl = 2;
     nStaircase = nStairDir*nHemi*nFlankerTilt*nCrowdLvl;
     
+    maxori = 20;
+    minori = 0.5; % vertical
+    ori = repmat([minori maxori],1,nStaircase/2);    % 2 starting points
+    stairdir = repmat([1 0],1,nStaircase/2);  % staircase 1 starts up (1) & 2 starts down (0) direction
+    crowdLvl = [0 0 1 1]; % if WhichStair = 1 | 2, no crowding; if WhichStair = 3 | 4, yes crowding
+    
     if blockNum % if not practice
-        trialNumber = 100*nStairDir*nHemi*nFlankerTilt*nCrowdLvl; % 100 each for up/down(2)*#nHemi(2)*#flankertilt(2)
+        trialNumber = 100*nStaircase; % 100 each for up/down(2)*#nHemi(2)*#flankertilt(2)
     else
         trialNumber = 20;
     end
     
     trials = 0; % initiate trial counter
-    stairdir = repmat([1 0],1,nStaircase/2);  % staircase 1 starts up (1) & 2 starts down (0) direction
-    crowdLvl = [0 0 1 1]; % if WhichStair = 1 | 2, no crowding; if WhichStair = 3 | 4, yes crowding
+    flag = 0; % initiate flag 
+    
     nReverse = zeros(1,nStaircase);  % counts the number of reversals each staircase
     stairCorrect = zeros(1,nStaircase); % counts # correct in a row each staircase
     trial = zeros(1,nStaircase); % zero trial counters 2 staircases
     realTrial = zeros(1,nStaircase); 
     stimulusReversal = zeros(nStaircase,20); % matrix with stimulus setting at staircase reversals
-    rspKey = zeros(1,trialNumber);
-    rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
-    flag = 0;
-    maxori = 20;
-    minori = 0.5; % vertical
-    ori = repmat([minori maxori],1,nHemi*nFlankerTilt*nCrowdLvl);    % 2 starting points
-    delta = 0.5;          % how much to change signal at reversals
+
+    percChange = 0.2; % change signal by 20% at reversals
     
-    T1 = .1; 
-    ISI = .15;
-    T2 = .1;
-    postStim = .05;
+    %% initial value & stimulus settings
     
-    %% initial value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     barContrast = .7;
     stimColor = 1*grey - barContrast*grey;
     
-    percentCatch = .25; % 25% catch trials with display in left hemifield
+    percCatch = .35; % 35% catch trials with display in left hemifield
     
     fixRad = 0.2;  %radius of fixation spot
     barWid = 0.1; 
@@ -118,9 +118,14 @@ try
     ecc = 14;
     tfDist = 3;
     markerWaitList = [0.75, 1, 1.25];
-    mn = 3;     % the number of markerWait;
+    mn = 3; % the number of markerWait;
     
-    nTotalTrials = ceil(percentCatch*trialNumber) + trialNumber;
+    T1 = .1; 
+    ISI = .15;
+    T2 = .1;
+    postStim = .05;
+    
+    nTotalTrials = ceil(percCatch*trialNumber) + trialNumber;
     hemiIndex(1:trialNumber) = ones; 
     hemiIndex(trialNumber+1:nTotalTrials) = -1;
     x = randperm(nTotalTrials); 
@@ -142,7 +147,6 @@ try
     tfDistPx = round(tfDist*ppd);
     barLenPx = round(barLen*ppd);
     barWidPx = round(barWid*ppd);
-    maskBarWidPx = round(maskBarWid*ppd);
     
     markerWaitIndex = repmat(markerWaitList,1,floor((nTotalTrials+mn)./mn));
     n = randperm(nTotalTrials);
@@ -152,13 +156,12 @@ try
     barTexVert = Screen('MakeTexture', w, barVert); % convert into texture
     texrect = Screen('Rect', barTexVert); % convert into rect
     
-    circrect = [0 0 barLenPx barLenPx]; 
-    
+    % destination rects for example bars on instruction screen
     dstRectsInst(:,1) = CenterRectOnPoint(texrect, xCen - eccPx/4, yCen + eccPx/1.5);
     dstRectsInst(:,2) = CenterRectOnPoint(texrect, xCen + eccPx/4, yCen + eccPx/1.5);
     rotAnglesInst = [-20 20];
     
-    %initialize stuff for feedback
+    % initialize stuff for feedback
     stimulus_onset_time(1:nTotalTrials) = zeros;
     r1(1:nTotalTrials) = zeros;
     acc(1:nTotalTrials,1:2) = zeros;
@@ -166,6 +169,8 @@ try
     Keyresponse(1:nTotalTrials,1:2) = zeros;
     stairOrder(1:nTotalTrials) = zeros;
     crowd(1:nTotalTrials) = zeros; 
+    rspKey = zeros(1,nTotalTrials);
+    rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     
     %% instructions
     
@@ -242,21 +247,14 @@ try
         
         % show fixation cross
         Screen('FillRect', w, grey);
-        % Draw fixation to indicate the start of the trial
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
         Screen('Flip',w);
         WaitSecs(markerWait(trials));
         
         % draw stimulus display
-        % position the stimuli 
         dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
         dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2));
         dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2));
-        
-        upperBound = dstRects(2,2);
-        lowerBound = dstRects(4,3);
-        leftBound = dstRects(1,3);
-        rightBound = dstRects(3,2);
         
         if ~crowd(trials)
             dstRects = dstRects(:,1);
@@ -266,10 +264,8 @@ try
         r1(trials) = oriIndex(trials)*ori(WhichStair);
         if crowd(trials)
             rotAngles = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
-            rotAnglesT2 = [0 rotAngles(2:3)];
         else
             rotAngles = r1(trials);
-            rotAnglesT2 = 0;
         end
         
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
@@ -294,22 +290,16 @@ try
         aperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
         Screen('FillOval', aperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
         Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-%         Screen('Flip', w);
-        
         AssertOpenGL;
-        contrast = 0.5;
-        tex = CreateProceduralNoise(w, barLenPx, barLenPx, 'Perlin', [0.5 0.5 0.5 0.0]);
-        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [], [], [], repmat([contrast, 0, 0, 0],3,1)');
+        contrast = 2;
+        tex = CreateProceduralNoise(w, barLenPx, barLenPx, 'Perlin', [0.0 0.0 0.0 0.0]); % 0.5 0.5 0.5 0 for grey
+        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],3,1)');
         Screen('DrawTextures', w, aperture, [], cDstRects, [], 0);        
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-%         Screen('FrameOval', w, stimColor, circDstRects);
-%         Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 0);
-%         Screen('DrawTextures', w, barTexVert, [], dstRects(:,1), 90);
-        
+
         diff = ISI + T2 + postStim - toc;
         WaitSecs(diff);
         Screen('Flip',w);
-        
         clear cDstRects
         
         keypressed = 0;
@@ -341,7 +331,6 @@ try
         end
         
         %staircase stuff
-        percChange = 0.2; % 20%, used by Livne/Sagi
         if acc(trial(WhichStair),WhichStair) % IF CORRECT
             Beeper(1000); %play high beep for correct answer
             if hemiIndex(trials) > 0
@@ -426,28 +415,20 @@ try
         save(filenameTxt);
         save(filenameMatAll);
         save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder');
+            'flankerIndex','stairOrder','realTrial');
         
-        for i = 1:8
+        for i = 1:nStaircase
             plot(stimulusReversal(i,1:nReverse(i)));hold on;
         end
     end
     cd(oripath);
-    
-%     saveas(gcf, pathdata, 'fig');
-%     fig = gcf;
-%     fig.PaperUnits = 'inches';
-%     fig.PaperPosition = [0 0 10 10];
-%     print(pathdata,'-dpng')
-%     fprintf('Figure saved.\n')
-%     
+   
 catch psychlasterror
     Screen ('CloseAll');
     close all;
     ShowCursor;
     disp(psychlasterror.message);
     disp(psychlasterror.stack);
-    %psychrethrow (psychlasterror);
     
 end   % try catch
 % end   % function
