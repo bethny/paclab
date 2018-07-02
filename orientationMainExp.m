@@ -17,12 +17,6 @@
 % 10 ori = -, base = horiz, crowding = 0
 % 11 ori = 0, base = horiz, crowding = 0
 % 12 ori = +, base = horiz, crowding = 0
-% 13 ori = -, base = vert, crowding = +
-% 14 ori = 0, base = vert, crowding = +
-% 15 ori = +, base = vert, crowding = +
-% 16 ori = -, base = horiz, crowding = +
-% 17 ori = 0, base = horiz, crowding = +
-% 18 ori = +, base = horiz, crowding = +
 
 % SUBJECTS
 % 1 
@@ -87,18 +81,19 @@ try
     
     %% experiment settings
     
-    nTilt = 3; % +/-/0
+    nTrialPerCnd = 24; 
+    nFlanker = 3; % +/-/0
     nBaseOri = 2; % 0/90
-    nCrwd = 3; % +45/-45/none
-    nCnd = nTilt*nCrwd*nBaseOri;
+    nTarg = 2; % same/diff
+    nCnd = nFlanker*nTarg*nBaseOri;
     
     if blockNum % if not practice
-        trialNumber = 40*nCnd;
+        trialNumber = nTrialPerCnd*nCnd;
     else
-        trialNumber = 20;
+        trialNumber = 18;
     end
     
-    percCatch = .35; % 35% catch trials with display in left hemifield
+    percCatch = 1/3; % 35% catch trials with display in left hemifield
     nTotalTrials = ceil(percCatch*trialNumber) + trialNumber;
     
     cndList = repmat([1:nCnd],1,ceil(nTotalTrials/nCnd));
@@ -106,9 +101,8 @@ try
     cndList = cndList(x);
     
     threshold = 8;
-    none = 0; % vertical
     
-    tiltList = [-1*threshold 0 threshold];
+    targList = [-1*threshold threshold 0 0];
     baseOriList = [0 90];
     crowdList = [-1 0 1];
     cnds = combvec(tiltList,baseOriList,crowdList);
@@ -167,6 +161,10 @@ try
     barVert = ones(barLenPx, barWidPx)*grey - barContrast*grey; % assign pixel values for bar
     barTexVert = Screen('MakeTexture', w, barVert); % convert into texture
     texrect = Screen('Rect', barTexVert); % convert into rect
+    
+    graspSquare = ones(barLenPx, barLenPx)*grey - barContrast*grey;
+    graspSquareTex = Screen('MakeTexture', w, graspSquare); % convert into texture
+    graspSquareRect = Screen('Rect', graspSquareTex); % convert into rect
     
     % destination rects for example bars on instruction screen
     dstRectsInst(:,1) = CenterRectOnPoint(texrect, xCen - eccPx/4, yCen + eccPx/1.5);

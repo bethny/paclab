@@ -4,8 +4,6 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
-% see if you need a pure vertical line -- literature review 
-
 % SUBJECTS
 % 1 Sydney
 % 2 James
@@ -55,6 +53,8 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
+    PsychDebugWindowConfiguration(1,0.5);
+    
     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
@@ -85,7 +85,9 @@ try
     maxori = 20;
     minori = 0.5; % vertical
     ori = repmat([minori maxori],1,nStaircase/2);    % 2 starting points
+    oriCatch = repmat([minori maxori],1,nStaircase/2);
     stairdir = repmat([1 0],1,nStaircase/2);  % staircase 1 starts up (1) & 2 starts down (0) direction
+    stairdirCatch = repmat([1 0],1,nStaircase/2);  % staircase 1 starts up (1) & 2 starts down (0) direction
     crowdLvl = [0 0 1 1]; % if WhichStair = 1 | 2, no crowding; if WhichStair = 3 | 4, yes crowding
     
     if blockNum % if not practice
@@ -102,29 +104,38 @@ try
     trial = zeros(1,nStaircase); % zero trial counters 2 staircases
     realTrial = zeros(1,nStaircase); 
     stimulusReversal = zeros(nStaircase,20); % matrix with stimulus setting at staircase reversals
+    
+    nReverseCatch = zeros(1,nStaircase);  % counts the number of reversals each staircase
+    stairCorrectCatch = zeros(1,nStaircase); % counts # correct in a row each staircase
+    stimulusReversalCatch = zeros(nStaircase,20);
 
     percChange = 0.2; % change signal by 20% at reversals
     
     %% initial value & stimulus settings
     
+    key1 = 90; % z = CCW
+    key2 = 88; % x = CW
+    
+    percCatch = 1/3; % 33% catch trials with display in left hemifield
+    
     barContrast = .7;
-    stimColor = 1*grey - barContrast*grey;
-    
-    percCatch = .35; % 35% catch trials with display in left hemifield
-    
+    stimColor = grey - barContrast*grey;
     fixRad = 0.2;  %radius of fixation spot
     barWid = 0.1; 
     barLen = 1.75;
     maskBarWid = 0.15;
     ecc = 14;
     tfDist = 3;
-    markerWaitList = [0.75, 1, 1.25];
-    mn = 3; % the number of markerWait;
     
+    fixRadPx = round(fixRad*ppd);
+    FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
+    eccPx = round(ecc*ppd);
+    tfDistPx = round(tfDist*ppd);
+    barLenPx = round(barLen*ppd);
+    barWidPx = round(barWid*ppd);
+    
+    Tmarker = 1;   
     T1 = .1; 
-    ISI = .15;
-    T2 = .1;
-    postStim = .05;
     
     nTotalTrials = ceil(percCatch*trialNumber) + trialNumber;
     hemiIndex(1:trialNumber) = ones; 
@@ -147,17 +158,6 @@ try
     baseOriIdx = repmat(baseOri,1,ceil(nTotalTrials./2));
     n = randperm(nTotalTrials);
     baseOriIndex = baseOriIdx(1,n);
-    
-    fixRadPx = round(fixRad*ppd);
-    FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
-    eccPx = round(ecc*ppd);
-    tfDistPx = round(tfDist*ppd);
-    barLenPx = round(barLen*ppd);
-    barWidPx = round(barWid*ppd);
-    
-    markerWaitIndex = repmat(markerWaitList,1,floor((nTotalTrials+mn)./mn));
-    n = randperm(nTotalTrials);
-    markerWait = markerWaitIndex(1,n);
     
     barVert = ones(barLenPx, barWidPx)*grey - barContrast*grey; % assign pixel values for bar
     barTexVert = Screen('MakeTexture', w, barVert); % convert into texture
@@ -194,10 +194,8 @@ try
     %Practice Instructions
     if blockNum == 0 
         instText = ['Fixate on the center dot during the entire trial.\n'...
-            'Press the LEFT ARROW KEY if the center bar\n'...
-            'is tilted to the left (counterclockwise).\n'...
-            'Press the RIGHT ARROW KEY if the center bar\n'...
-            'is tilted to the right (clockwise).\n\n'...
+            'Press 1 if the center bar is tilted counterclockwise.\n'...
+            'Press 2 if the center bar is tilted clockwise.\n\n'...
             'If you respond correctly, you will hear a beep. \n'...
             'If you respond incorrectly, you will hear a lower beep. \n\n'...  
             'If you need to exit the trial, press q. \n\n'...
@@ -221,42 +219,43 @@ try
     GetChar;
     Screen('TextSize', w, 20);
     Screen('Flip', w);
-    
-%     if blockNum == 0
-%         Screen('DrawTexture', w, imageFinal, [], im);
-%         Screen('Flip', w);
-%         FlushEvents('keyDown');
-%         GetChar;
-%         Screen('TextSize', w, 20);
-%         Screen('Flip', w);
-%     end
 
-    activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
+    activeKeys = [KbName('1') KbName('2') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
     
     %% main experiment
     
     while flag == 0 && trials < nTotalTrials % flag = 1 means that we've hit the upper limit
+        priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
+        Priority(priorityLevel);
+        
         clear dstRects
         trials = trials + 1 
         WhichStair = randi(nStaircase); % which staircase to use
         stairOrder(trials) = WhichStair; 
         stdir = stairdir(WhichStair);
         crowd(trials) = crowdLvl(WhichStair);
-        stori = ori(WhichStair);
         trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
+        
         if hemiIndex(trials) > 0
             realTrial(WhichStair) = realTrial(WhichStair) + 1;
+            stori = ori(WhichStair);
+        else
+            stori = oriCatch(WhichStair); 
         end
         
-        priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
-        Priority(priorityLevel);
+        if baseOriIndex(trials)
+            cue = {'horizontal','H'};
+        else
+            cue = {'vertical','V'};
+        end
         
-        % show fixation cross
+        % show fixation cross & pre-cue
         Screen('FillRect', w, grey);
+        DrawFormattedText(w, cue{1}, 'Center', FIXATION_POSITION(2)-20, stimColor);
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
         Screen('Flip',w);
-        WaitSecs(markerWait(trials));
+        WaitSecs(Tmarker);
         
         % draw stimulus display
         dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
@@ -277,6 +276,7 @@ try
             rotAngles = r1(trials);
         end
         
+        DrawFormattedText(w, cue{2}, 'Center', FIXATION_POSITION(2)-20, stimColor);
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
         Screen('FillOval', w, stimColor, FIXATION_POSITION, 10);
         Screen('Flip',w);
@@ -286,35 +286,6 @@ try
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
         Screen('Flip',w);
         
-        tic
-        % NOISE CIRCLE
-        circRect = SetRect(0,0, barLenPx, barLenPx);
-        cDstRects(:,1) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        if crowd(trials)
-            cDstRects(:,2) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
-                yCen - tfDistPx/sqrt(2));
-            cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
-                yCen + tfDistPx/sqrt(2));
-            cDstRects(:,4) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
-                yCen - tfDistPx/sqrt(2));
-            cDstRects(:,5) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
-                yCen + tfDistPx/sqrt(2));
-        end
-        aperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
-        Screen('FillOval', aperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
-        Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        AssertOpenGL;
-        contrast = 2;
-        tex = CreateProceduralNoise(w, barLenPx, barLenPx, 'Perlin', [0.0 0.0 0.0 0.0]); % 0.5 0.5 0.5 0 for grey
-        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],5,1)');
-        Screen('DrawTextures', w, aperture, [], cDstRects, [], 0);        
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-
-        diff = ISI + T2 + postStim - toc;
-        WaitSecs(diff);
-        Screen('Flip',w);
-        clear cDstRects
-        
         keypressed = 0;
         while ~keypressed
             [keyIsDown, secs, responseKey] = KbCheck;
@@ -323,15 +294,15 @@ try
                     Screen('CloseAll');
                     ShowCursor;
                 end
-                if responseKey(KbName('LeftArrow'))
+                if find(responseKey)==key1
                     rspRatio(1) = rspRatio(1) + 1;
                     rspKey(trials) = 0;
-                elseif responseKey(KbName('RightArrow'))
+                elseif find(responseKey)==key2
                     rspRatio(2) = rspRatio(2) + 1;
                     rspKey(trials) = 1;
                 end
-                if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
-                        responseKey(KbName('LeftArrow'))
+                if oriIndex(trials) == 1 && (find(responseKey)==key2) || oriIndex(trials) == -1 && ...
+                        (find(responseKey)==key1)
                     acc(trial(WhichStair),WhichStair) = 1;
                 else
                     acc(trial(WhichStair),WhichStair) = 0;
@@ -364,6 +335,22 @@ try
                         ori(WhichStair) = minori;
                     end % can't be negative
                 end
+            else
+                if stairCorrectCatch(WhichStair) == 3   % time to make stimulus harder?
+                    stairCorrectCatch(WhichStair) = 0;  % zero counter
+                    % STAIRCASE DIRECTION FLAGS: 0 = down (getting harder), 1 = up (getting easier)
+                    if stairdirCatch(WhichStair) == 1 % if stair direction is currently UP (= 1) this is a reversal
+                        stairdirCatch(WhichStair) = 0; % stair direction changes to DOWN
+                        nReverseCatch(WhichStair) = nReverseCatch(WhichStair) + 1; % count reversal
+                        stimulusReversalCatch(WhichStair, nReverseCatch(WhichStair)) = oriCatch(WhichStair); % record stimulus value ...
+                            % (stairStep) at reversal
+                    end
+                    %change stimulus to make stimulus harder
+                    oriCatch(WhichStair) = oriCatch(WhichStair) - percChange*oriCatch(WhichStair); 
+                    if oriCatch(WhichStair) < minori
+                        oriCatch(WhichStair) = minori;
+                    end % can't be negative
+                end
             end
             
         else %incorrect response
@@ -379,6 +366,18 @@ try
                 ori(WhichStair) = ori(WhichStair) + percChange*ori(WhichStair);
                 if ori(WhichStair) > maxori
                     ori(WhichStair) = maxori;
+                end % max of 45
+            else
+                stairCorrectCatch(WhichStair) = 0;
+                if stairdirCatch(WhichStair) == 0
+                    stairdirCatch(WhichStair) = 1;   % change direction to UP
+                    nReverseCatch(WhichStair) = stairdirCatch(WhichStair) + 1; % count reversal
+                    stimulusReversalCatch(WhichStair, stairdirCatch(WhichStair)) = oriCatch(WhichStair); % record stimulus @ this reversal
+                end
+                %change stimulus to make stimulus easier
+                oriCatch(WhichStair) = oriCatch(WhichStair) + percChange*oriCatch(WhichStair);
+                if oriCatch(WhichStair) > maxori
+                    oriCatch(WhichStair) = maxori;
                 end % max of 45
             end
         end
