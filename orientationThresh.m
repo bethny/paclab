@@ -24,6 +24,7 @@
 % 13 Amos
 
 try
+    clear all
     VIEWING_DISTANCE_CM = 52;
     MONITOR_WIDTH_CM = 44;
     
@@ -130,6 +131,7 @@ try
     hemiIndex(trialNumber+1:nTotalTrials) = -1;
     x = randperm(nTotalTrials); 
     hemiIndex = hemiIndex(x); 
+    idxCatchTrials = find(hemiIndex == -1);
     
     orientList = [-1 1]; % left vs right tilt
     orientIndex = repmat(orientList,1,ceil(nTotalTrials./2));
@@ -140,6 +142,11 @@ try
     flankerIdx = repmat(flankerTilt,1,ceil(nTotalTrials./2));
     n = randperm(nTotalTrials);
     flankerIndex = flankerIdx(1,n);
+    
+    baseOri = [0 90];
+    baseOriIdx = repmat(baseOri,1,ceil(nTotalTrials./2));
+    n = randperm(nTotalTrials);
+    baseOriIndex = baseOriIdx(1,n);
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -253,17 +260,19 @@ try
         
         % draw stimulus display
         dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2));
-        dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2));
+        dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % UR
+        dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % LL
+        dstRects(:,4) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % UL
+        dstRects(:,5) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % LR
         
         if ~crowd(trials)
             dstRects = dstRects(:,1);
         end
 
         % pick orientations
-        r1(trials) = oriIndex(trials)*ori(WhichStair);
+        r1(trials) = baseOriIndex(trials) + oriIndex(trials)*ori(WhichStair);
         if crowd(trials)
-            rotAngles = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
+            rotAngles = [r1(trials) repmat(45*flankerIndex(trials),1,4)]; % optimal for threshold elevation
         else
             rotAngles = r1(trials);
         end
@@ -286,6 +295,10 @@ try
                 yCen - tfDistPx/sqrt(2));
             cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
                 yCen + tfDistPx/sqrt(2));
+            cDstRects(:,4) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
+                yCen - tfDistPx/sqrt(2));
+            cDstRects(:,5) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
+                yCen + tfDistPx/sqrt(2));
         end
         aperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
         Screen('FillOval', aperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
@@ -293,7 +306,7 @@ try
         AssertOpenGL;
         contrast = 2;
         tex = CreateProceduralNoise(w, barLenPx, barLenPx, 'Perlin', [0.0 0.0 0.0 0.0]); % 0.5 0.5 0.5 0 for grey
-        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],3,1)');
+        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],5,1)');
         Screen('DrawTextures', w, aperture, [], cDstRects, [], 0);        
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
 
@@ -415,7 +428,7 @@ try
         save(filenameTxt);
         save(filenameMatAll);
         save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder','realTrial');
+            'flankerIndex','stairOrder','realTrial','idxCatchTrial');
         
         for i = 1:nStaircase
             plot(stimulusReversal(i,1:nReverse(i)));hold on;

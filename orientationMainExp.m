@@ -4,6 +4,26 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
+% CONDITIONS
+% 1	ori = -, base = vert, crowding = -
+% 2 ori = 0, base = vert, crowding = -
+% 3 ori = +, base = vert, crowding = -
+% 4 ori = -, base = horiz, crowding = -
+% 5 ori = 0, base = horiz, crowding = -
+% 6 ori = +, base = horiz, crowding = -
+% 7 ori = -, base = vert, crowding = 0
+% 8 ori = 0, base = vert, crowding = 0
+% 9 ori = +, base = vert, crowding = 0
+% 10 ori = -, base = horiz, crowding = 0
+% 11 ori = 0, base = horiz, crowding = 0
+% 12 ori = +, base = horiz, crowding = 0
+% 13 ori = -, base = vert, crowding = +
+% 14 ori = 0, base = vert, crowding = +
+% 15 ori = +, base = vert, crowding = +
+% 16 ori = -, base = horiz, crowding = +
+% 17 ori = 0, base = horiz, crowding = +
+% 18 ori = +, base = horiz, crowding = +
+
 % SUBJECTS
 % 1 
 % 2 
@@ -13,7 +33,7 @@
 % 6 
 % 7 
 % 8 
-% 9 
+% 9
 
 try
     VIEWING_DISTANCE_CM = 52;
@@ -65,44 +85,39 @@ try
     secPerFrame = Screen('GetFlipInterval',w);
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
     
-    %% staircase settings
+    %% experiment settings
     
-    nStairDir = 2;
-    nHemi = 1;
-    nFlankerTilt = 1; % 1 staircase for both
-    nCrowdLvl = 2;
-    nStaircase = nStairDir*nHemi*nFlankerTilt*nCrowdLvl;
-    
-    threshold = 8;
-    none = 0; % vertical
-    ori = repmat([none threshold],1,nStaircase/2);    % 2 starting points
-    stairdir = repmat([1 0],1,nStaircase/2);  % staircase 1 starts up (1) & 2 starts down (0) direction
-    crowdLvl = [0 0 1 1]; % if WhichStair = 1 | 2, no crowding; if WhichStair = 3 | 4, yes crowding
+    nTilt = 3; % +/-/0
+    nBaseOri = 2; % 0/90
+    nCrwd = 3; % +45/-45/none
+    nCnd = nTilt*nCrwd*nBaseOri;
     
     if blockNum % if not practice
-        trialNumber = 100*nStaircase; % 100 each for up/down(2)*#nHemi(2)*#flankertilt(2)
+        trialNumber = 40*nCnd;
     else
         trialNumber = 20;
     end
     
-    trials = 0; % initiate trial counter
-    flag = 0; % initiate flag 
+    percCatch = .35; % 35% catch trials with display in left hemifield
+    nTotalTrials = ceil(percCatch*trialNumber) + trialNumber;
     
-    nReverse = zeros(1,nStaircase);  % counts the number of reversals each staircase
-    stairCorrect = zeros(1,nStaircase); % counts # correct in a row each staircase
-    trial = zeros(1,nStaircase); % zero trial counters 2 staircases
-    realTrial = zeros(1,nStaircase); 
-    stimulusReversal = zeros(nStaircase,20); % matrix with stimulus setting at staircase reversals
-
-    percChange = 0.2; % change signal by 20% at reversals
+    cndList = repmat([1:nCnd],1,ceil(nTotalTrials/nCnd));
+    x = randperm(nTotalTrials);
+    cndList = cndList(x);
+    
+    threshold = 8;
+    none = 0; % vertical
+    
+    tiltList = [-1*threshold 0 threshold];
+    baseOriList = [0 90];
+    crowdList = [-1 0 1];
+    cnds = combvec(tiltList,baseOriList,crowdList);
     
     %% initial value & stimulus settings
     
     barContrast = .7;
     stimColor = 1*grey - barContrast*grey;
-    
-    percCatch = .35; % 35% catch trials with display in left hemifield
-    
+
     fixRad = 0.2;  %radius of fixation spot
     barWid = 0.1; 
     barLen = 1.75;
@@ -112,38 +127,31 @@ try
     markerWaitList = [0.75, 1, 1.25];
     mn = 3; % the number of markerWait;
     
-%     T1 = .1; 
-%     ISI = .15;
-%     T2 = .1;
-%     postStim = .05;
-%     graspDur = .6;
-    
-    T1 = 2; 
-    ISI = 2;
-    T2 = 2;
-    postStim = 2;
-    graspDur = 2;
-    
-    nTotalTrials = ceil(percCatch*trialNumber) + trialNumber;
+    T1 = .1; 
+    ISI = .15;
+    T2 = .1;
+    postStim = .05;
+    graspDur = .6;
+  
     hemiIndex(1:trialNumber) = ones; 
     hemiIndex(trialNumber+1:nTotalTrials) = -1;
     x = randperm(nTotalTrials); 
     hemiIndex = hemiIndex(x); 
     
-    orientList = [-1 1]; % left vs right tilt
-    orientIndex = repmat(orientList,1,ceil(nTotalTrials./2));
-    n = randperm(nTotalTrials);
-    oriIndex = orientIndex(1,n);
-    
-    baseOriList = [0 90]; % vertical vs horizontal bar
-    baseOriIdx = repmat(baseOriList,1,ceil(nTotalTrials./2));
-    n = randperm(nTotalTrials);
-    baseOriIndex = baseOriIdx(1,n);
-    
-    flankerTilt = [-1 1];
-    flankerIdx = repmat(flankerTilt,1,ceil(nTotalTrials./2));
-    n = randperm(nTotalTrials);
-    flankerIndex = flankerIdx(1,n);
+%     orientList = [-1 1]; % left vs right tilt
+%     orientIndex = repmat(orientList,1,ceil(nTotalTrials./2));
+%     n = randperm(nTotalTrials);
+%     oriIndex = orientIndex(1,n);
+%     
+%     baseOriList = [0 90]; % vertical vs horizontal bar
+%     baseOriIdx = repmat(baseOriList,1,ceil(nTotalTrials./2));
+%     n = randperm(nTotalTrials);
+%     baseOriIndex = baseOriIdx(1,n);
+%     
+%     flankerTilt = [-1 1];
+%     flankerIdx = repmat(flankerTilt,1,ceil(nTotalTrials./2));
+%     n = randperm(nTotalTrials);
+%     flankerIndex = flankerIdx(1,n);
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -166,13 +174,12 @@ try
     rotAnglesInst = [-20 20];
     
     % initialize stuff for feedback
+    trials = 0; % initiate trial counter
     stimulus_onset_time(1:nTotalTrials) = zeros;
-    r1(1:nTotalTrials) = zeros;
+    targAngle(1:nTotalTrials) = zeros;
     acc(1:nTotalTrials,1:2) = zeros;
     rt(1:nTotalTrials,1:2) = zeros;
     Keyresponse(1:nTotalTrials,1:2) = zeros;
-    stairOrder(1:nTotalTrials) = zeros;
-    crowd(1:nTotalTrials) = zeros; 
     rspKey = zeros(1,nTotalTrials);
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     
@@ -228,7 +235,7 @@ try
 %         Screen('Flip', w);
 %     end
 
-    activeKeys = [KbName('LeftArrow') KbName('RightArrow') KbName('q')];
+    activeKeys = [KbName('1') KbName('2') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
     
     %% main experiment
@@ -238,15 +245,10 @@ try
         clear cDstRects
         
         trials = trials + 1 
-        WhichStair = randi(nStaircase); % which staircase to use
-        stairOrder(trials) = WhichStair; 
-        stdir = stairdir(WhichStair);
-        crowd(trials) = crowdLvl(WhichStair);
-        stori = ori(WhichStair);
-        trial(WhichStair) = trial(WhichStair) + 1;  % count trials on this staircase
-        if hemiIndex(trials) > 0
-            realTrial(WhichStair) = realTrial(WhichStair) + 1;
-        end
+        curCnd = cndList(trials); 
+        targOri = cnds(1,curCnd);
+        baseOri = cnds(2,curCnd);
+        crowding = cnds(3,curCnd);
         
         priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
         Priority(priorityLevel);
@@ -261,19 +263,22 @@ try
         dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
         dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2));
         dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2));
+        dstRects(:,4) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % UL
+        dstRects(:,5) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % LR
         
         if ~crowd(trials)
             dstRects = dstRects(:,1);
         end
 
         % pick orientations
-        r1(trials) = oriIndex(trials)*(ori(WhichStair)+baseOriIndex(trials));
-        if crowd(trials)
-            rotAngles1 = [r1(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)]; % optimal for threshold elevation
-            rotAngles2 = [baseOriIndex(trials) 45*flankerIndex(trials) 45*flankerIndex(trials)];
+        targAngle = targOri + baseOri;
+        
+        if crowding
+            rotAngles1 = [targAngle repmat(45*crowding,1,4)]; % optimal for threshold elevation
+            rotAngles2 = [baseOri repmat(45*crowding,1,4)];
         else
-            rotAngles1 = r1(trials);
-            rotAngles2 = baseOriIndex(trials);
+            rotAngles1 = targAngle;
+            rotAngles2 = baseOri;
         end
         
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles1);
@@ -303,6 +308,10 @@ try
                 yCen - tfDistPx/sqrt(2));
             cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
                 yCen + tfDistPx/sqrt(2));
+            cDstRects(:,4) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
+                yCen - tfDistPx/sqrt(2));
+            cDstRects(:,5) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
+                yCen + tfDistPx/sqrt(2));
         end
         aperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
         Screen('FillOval', aperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
@@ -330,29 +339,27 @@ try
                     Screen('CloseAll');
                     ShowCursor;
                 end
-                if responseKey(KbName('LeftArrow'))
+                if responseKey(KbName('1'))
                     rspKey(trials) = 0;
-                elseif responseKey(KbName('RightArrow'))
+                elseif responseKey(KbName('2'))
                     rspKey(trials) = 1;
                 end
-                if oriIndex(trials) == 1 && responseKey(KbName('RightArrow')) || oriIndex(trials) == -1 && ...
-                        responseKey(KbName('LeftArrow'))
-                    acc(trial(WhichStair),WhichStair) = 1;
+                if ~targOri && responseKey(KbName('1')) || targOri && responseKey(KbName('2')) % 1 for same, 2 for diff
+                    acc(trials) = 1;
                 else
-                    acc(trial(WhichStair),WhichStair) = 0;
+                    acc(trials) = 0;
                 end
-                rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
-                Keyresponse(trial(WhichStair),WhichStair) = find(responseKey);
+                rt(trials) = (secs-stimulus_onset_time(trials));
+                Keyresponse(trials) = find(responseKey);
                 KbReleaseWait;
                 keypressed = 1;
             end
         end
         
         %staircase stuff
-        if ((find(responseKey)==key1)&&(r1==0)) || ((find(responseKey)==key2)&&(r1~=0))
+        if ((find(responseKey)==key1)&&(targAngle==0)) || ((find(responseKey)==key2)&&(targAngle~=0))
             acc(trial(WhichStair),WhichStair) = 1; % IF CORRECT
             Beeper(1000); %play high beep for correct answer
-            acc(WhichCnd) = acc(WhichCnd) + 1;
         else %incorrect response
             Beeper(500);
         end
@@ -396,7 +403,7 @@ try
         
         ListenChar(1); % Turn keyboard output to command window on
         
-        dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
+        dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,targAngle(trials),acc(trial(WhichStair),WhichStair),...
             stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials),...
             flankerIndex(trials)],'-append', ...
             'roffset', [],'delimiter', '\t');
