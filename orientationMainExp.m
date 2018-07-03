@@ -5,18 +5,18 @@
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
 % CONDITIONS
-% 1	ori = -, base = vert, crowding = -
-% 2 ori = 0, base = vert, crowding = -
-% 3 ori = +, base = vert, crowding = -
-% 4 ori = -, base = horiz, crowding = -
-% 5 ori = 0, base = horiz, crowding = -
-% 6 ori = +, base = horiz, crowding = -
-% 7 ori = -, base = vert, crowding = 0
-% 8 ori = 0, base = vert, crowding = 0
-% 9 ori = +, base = vert, crowding = 0
-% 10 ori = -, base = horiz, crowding = 0
-% 11 ori = 0, base = horiz, crowding = 0
-% 12 ori = +, base = horiz, crowding = 0
+% 1	same / vert / - flankers
+% 2 diff / vert / - flankers
+% 3 same / horiz / - flankers
+% 4 diff / horiz / - flankers
+% 5 same / vert / 0 flankers
+% 6 diff / vert / 0 flankers
+% 7 same / horiz / 0 flankers
+% 8 diff / horiz / 0 flankers
+% 9 same / vert / + flankers
+% 10 diff / vert / + flankers
+% 11 same / horiz / + flankers
+% 12 diff / horiz / + flankers
 
 % SUBJECTS
 % 1 
@@ -102,10 +102,10 @@ try
     
     threshold = 8;
     
-    targList = [-1*threshold threshold 0 0];
+    targList = [0 1]; % 0 = same, 1 = diff
     baseOriList = [0 90];
-    crowdList = [-1 0 1];
-    cnds = combvec(tiltList,baseOriList,crowdList);
+    flankerList = [-1 0 1];
+    cnds = CombVec(targList,baseOriList,flankerList);
     
     %% initial value & stimulus settings
     
@@ -131,6 +131,12 @@ try
     hemiIndex(trialNumber+1:nTotalTrials) = -1;
     x = randperm(nTotalTrials); 
     hemiIndex = hemiIndex(x); 
+    
+    nDiffTrials = sum(mod(cndList,2));
+    targTiltList = [-1 1];
+    targTiltIdx = repmat(targTiltList,1,nDiffTrials/2);
+    n = randperm(nDiffTrials);
+    targTiltIdx = targTiltIdx(n);
     
 %     orientList = [-1 1]; % left vs right tilt
 %     orientIndex = repmat(orientList,1,ceil(nTotalTrials./2));
@@ -173,6 +179,7 @@ try
     
     % initialize stuff for feedback
     trials = 0; % initiate trial counter
+    difftrials = 0;
     stimulus_onset_time(1:nTotalTrials) = zeros;
     targAngle(1:nTotalTrials) = zeros;
     acc(1:nTotalTrials,1:2) = zeros;
@@ -181,17 +188,10 @@ try
     rspKey = zeros(1,nTotalTrials);
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     
-    %% instructions
-    
+    %% instructions 
     KbName('UnifyKeyNames');
     Screen('FillRect', w, grey);
     Screen('TextSize', w, []);
-    
-    imHolder = [0 0 1000 500];
-    [im, ~, ~] = CenterRect(imHolder, winRect); 
-    [img, ~, alpha] = imread('screens2.png');
-    img(:,:,4) = alpha; 
-    imageFinal = Screen('MakeTexture', w, img);
     
     %Practice Instructions
     if blockNum == 0 
@@ -223,15 +223,6 @@ try
     GetChar;
     Screen('TextSize', w, 20);
     Screen('Flip', w);
-    
-%     if blockNum == 0
-%         Screen('DrawTexture', w, imageFinal, [], im);
-%         Screen('Flip', w);
-%         FlushEvents('keyDown');
-%         GetChar;
-%         Screen('TextSize', w, 20);
-%         Screen('Flip', w);
-%     end
 
     activeKeys = [KbName('1') KbName('2') KbName('q')];
     RestrictKeysForKbCheck(activeKeys);
@@ -244,9 +235,16 @@ try
         
         trials = trials + 1 
         curCnd = cndList(trials); 
-        targOri = cnds(1,curCnd);
-        baseOri = cnds(2,curCnd);
-        crowding = cnds(3,curCnd);
+        targID(trials) = cnds(1,curCnd);
+        baseOri(trials) = cnds(2,curCnd);
+        flanker(trials) = cnds(3,curCnd);
+        
+        if targID(trials)
+            difftrials = difftrials + 1;
+            targTilt(trials) = targTiltIdx(difftrials);
+        else
+            targTilt(trials) = 0;
+        end
         
         priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
         Priority(priorityLevel);
@@ -264,19 +262,19 @@ try
         dstRects(:,4) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % UL
         dstRects(:,5) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % LR
         
-        if ~crowd(trials)
+        if ~flanker(trials)
             dstRects = dstRects(:,1);
         end
 
         % pick orientations
-        targAngle = targOri + baseOri;
+        targAngle(trials) = targID(trials)*threshold*targTilt(trials) + baseOri(trials);
         
-        if crowding
-            rotAngles1 = [targAngle repmat(45*crowding,1,4)]; % optimal for threshold elevation
-            rotAngles2 = [baseOri repmat(45*crowding,1,4)];
+        if flanker(trials)
+            rotAngles1 = [targAngle(trials) repmat(45*flanker(trials),1,4)]; % optimal for threshold elevation
+            rotAngles2 = [baseOri(trials) repmat(45*flanker(trials),1,4)];
         else
-            rotAngles1 = targAngle;
-            rotAngles2 = baseOri;
+            rotAngles1 = targAngle(trials);
+            rotAngles2 = baseOri(trials);
         end
         
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles1);
@@ -301,7 +299,7 @@ try
         % NOISE CIRCLE
         circRect = SetRect(0,0, barLenPx, barLenPx);
         cDstRects(:,1) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        if crowd(trials)
+        if flanker
             cDstRects(:,2) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
                 yCen - tfDistPx/sqrt(2));
             cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
@@ -311,14 +309,19 @@ try
             cDstRects(:,5) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
                 yCen + tfDistPx/sqrt(2));
         end
-        aperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
-        Screen('FillOval', aperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
+        circAperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
+        sqAperture = Screen('OpenOffscreenwindow', w, 128, circRect);
         Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         AssertOpenGL;
         contrast = 2;
         tex = CreateProceduralNoise(w, barLenPx, barLenPx, 'Perlin', [0.0 0.0 0.0 0.0]); % 0.5 0.5 0.5 0 for grey
-        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],3,1)');
-        Screen('DrawTextures', w, aperture, [], cDstRects, [], 0);        
+        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],5,1)');
+        Screen('FillRect', sqAperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
+        Screen('DrawTextures', w, sqAperture, [], cDstRects(:,1), [], 0); 
+        if flanker
+            Screen('FillOval', circAperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
+            Screen('DrawTextures', w, circAperture, [], cDstRects(:,2:5), [], 0);        
+        end
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
 
         diff = T2 + postStim - toc;
@@ -342,7 +345,7 @@ try
                 elseif responseKey(KbName('2'))
                     rspKey(trials) = 1;
                 end
-                if ~targOri && responseKey(KbName('1')) || targOri && responseKey(KbName('2')) % 1 for same, 2 for diff
+                if ~targID && responseKey(KbName('1')) || targID && responseKey(KbName('2')) % 1 for same, 2 for diff
                     acc(trials) = 1;
                 else
                     acc(trials) = 0;
