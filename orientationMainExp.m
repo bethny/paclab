@@ -38,6 +38,8 @@ try
     
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
+    blockType = input('\n No-action (0) or grasp (1): ');
+    task = {'noAction','grasp'};
 
     oripath = pwd;
     addpath(genpath(oripath));
@@ -50,10 +52,14 @@ try
             fprintf('This subject already exists.\n');
         end
         cd(pathdata);
-        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.txt');
-        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.mat');
-        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold_all.mat');
+        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main.txt');
+        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main.mat');
+        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main_all.mat');
     end
+    
+    % get threshold info
+    data = load(sprintf('%s%dblock1_threshold_all.mat',pathdata,subjNum));
+    thresholds = data.thresholds;
     
     %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     WhichScreen = max(Screen('Screens'));
@@ -81,7 +87,7 @@ try
     
     %% experiment settings
     
-    nTrialPerCnd = 24; 
+    nTrialPerCnd = 24/2; 
     nFlanker = 3; % +/-/0
     nBaseOri = 2; % 0/90
     nTarg = 2; % same/diff
@@ -99,8 +105,6 @@ try
     cndList = repmat([1:nCnd],1,ceil(nTotalTrials/nCnd));
     x = randperm(nTotalTrials);
     cndList = cndList(x);
-    
-    threshold = 8;
     
     targList = [0 1]; % 0 = same, 1 = diff
     baseOriList = [0 90];
@@ -125,33 +129,19 @@ try
     ISI = .15;
     T2 = .1;
     postStim = .05;
-    graspDur = .6;
+    graspDur = 3;
   
     hemiIndex(1:trialNumber) = ones; 
     hemiIndex(trialNumber+1:nTotalTrials) = -1;
     x = randperm(nTotalTrials); 
     hemiIndex = hemiIndex(x); 
+    catchIdx = find(hemiIndex < 0);
     
     nDiffTrials = sum(mod(cndList,2));
     targTiltList = [-1 1];
     targTiltIdx = repmat(targTiltList,1,nDiffTrials/2);
     n = randperm(nDiffTrials);
     targTiltIdx = targTiltIdx(n);
-    
-%     orientList = [-1 1]; % left vs right tilt
-%     orientIndex = repmat(orientList,1,ceil(nTotalTrials./2));
-%     n = randperm(nTotalTrials);
-%     oriIndex = orientIndex(1,n);
-%     
-%     baseOriList = [0 90]; % vertical vs horizontal bar
-%     baseOriIdx = repmat(baseOriList,1,ceil(nTotalTrials./2));
-%     n = randperm(nTotalTrials);
-%     baseOriIndex = baseOriIdx(1,n);
-%     
-%     flankerTilt = [-1 1];
-%     flankerIdx = repmat(flankerTilt,1,ceil(nTotalTrials./2));
-%     n = randperm(nTotalTrials);
-%     flankerIndex = flankerIdx(1,n);
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -196,10 +186,8 @@ try
     %Practice Instructions
     if blockNum == 0 
         instText = ['Fixate on the center dot during the entire trial.\n'...
-            'Press the LEFT ARROW KEY if the center bar\n'...
-            'is tilted to the left (counterclockwise).\n'...
-            'Press the RIGHT ARROW KEY if the center bar\n'...
-            'is tilted to the right (clockwise).\n\n'...
+            'Press 1 if the two stimuli are the same.\n'...
+            'Press 2 if they are different.\n'...
             'If you respond correctly, you will hear a beep. \n'...
             'If you respond incorrectly, you will hear a lower beep. \n\n'...  
             'If you need to exit the trial, press q. \n\n'...
@@ -238,6 +226,12 @@ try
         targID(trials) = cnds(1,curCnd);
         baseOri(trials) = cnds(2,curCnd);
         flanker(trials) = cnds(3,curCnd);
+        
+        if flanker
+            threshold = thresholds(2);
+        else
+            threshold = thresholds(1);
+        end
         
         if targID(trials)
             difftrials = difftrials + 1;
@@ -345,10 +339,12 @@ try
                 elseif responseKey(KbName('2'))
                     rspKey(trials) = 1;
                 end
-                if ~targID && responseKey(KbName('1')) || targID && responseKey(KbName('2')) % 1 for same, 2 for diff
+                if (~targID && responseKey(KbName('1'))) || (targID && responseKey(KbName('2'))) % 1 for same, 2 for diff
                     acc(trials) = 1;
+                    Beeper(1000);
                 else
                     acc(trials) = 0;
+                    Beeper(500);
                 end
                 rt(trials) = (secs-stimulus_onset_time(trials));
                 Keyresponse(trials) = find(responseKey);
@@ -357,32 +353,19 @@ try
             end
         end
         
-        %staircase stuff
-        if ((find(responseKey)==key1)&&(targAngle==0)) || ((find(responseKey)==key2)&&(targAngle~=0))
-            acc(trial(WhichStair),WhichStair) = 1; % IF CORRECT
-            Beeper(1000); %play high beep for correct answer
-        else %incorrect response
-            Beeper(500);
-        end
-        
-        if hemiIndex > 0
-            realTrials = realTrials + 1;
-        end
-        
         ListenChar(0); %disables keyboard and flushes.
         ListenChar(2); %enables keyboard, no output to command window
         
         % test whether to offer a break
-        if trials == 200 || trials == 400 || trials == 600
-            breakText = 'Please take a break! Press RIGHT ARROW key when ready to resume.\n';
-            DrawFormattedText(w, breakText, 'Center', 'Center', [255 255 255]);
-            Screen('Flip',w);
-            WaitSecs(2); 
-            KbWait;
-            while KbCheck; end
+%         if trials == 200 || trials == 400 || trials == 600
+%             breakText = 'Please take a break! Press RIGHT ARROW key when ready to resume.\n';
+%             DrawFormattedText(w, breakText, 'Center', 'Center', [255 255 255]);
+%             Screen('Flip',w);
+%             WaitSecs(2); 
+%             KbWait;
+%             while KbCheck; end
+%         end
         end
-        end
-    
     
     Screen ('CloseAll');
     ShowCursor;

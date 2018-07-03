@@ -407,27 +407,32 @@ try
     % rudimentary data analysis
     if blockNum
         % sum stimulus values at each reversal for separate staircases
-        sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
-        sumReversal(2) = sum(stimulusReversal(2,4:nReverse(2)));
-        
-        % means
-        stair1mean = sumReversal(1)/(nReverse(1)-3);
-        stair2mean = sumReversal(2)/(nReverse(2)-3);
-        
-        % standard deviation
-        StandardDev1 = std(stimulusReversal(1,4:nReverse(1)));
-        StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
+%         sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
+%         sumReversal(2) = sum(stimulusReversal(2,4:nReverse(2)));
+%         
+%         % means
+%         stair1mean = sumReversal(1)/(nReverse(1)-3);
+%         stair2mean = sumReversal(2)/(nReverse(2)-3);
+%         
+%         % standard deviation
+%         StandardDev1 = std(stimulusReversal(1,4:nReverse(1)));
+%         StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
+%         
+        for i = 1:nStaircase % num staircases 
+            final6Rev(:,i) = stimulusReversal(i,nReverse(i)-5:nReverse(i));
+        end
+        avg1 = mean(final6Rev,1);
+        thresholds = [mean(avg1(1:2)) mean(avg1(3:4))];
         
         ListenChar(1); % Turn keyboard output to command window on
         
         dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
             stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials),...
-            flankerIndex(trials)],'-append', ...
-            'roffset', [],'delimiter', '\t');
+            flankerIndex(trials)],'-append','roffset', [],'delimiter', '\t');
         save(filenameTxt);
         save(filenameMatAll);
         save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder','realTrial','idxCatchTrial');
+            'flankerIndex','stairOrder','realTrial','idxCatchTrial','thresholds');
         
         for i = 1:nStaircase
             plot(stimulusReversal(i,1:nReverse(i)));hold on;

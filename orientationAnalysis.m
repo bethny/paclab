@@ -23,8 +23,8 @@
 %%
 clear all
 close all
-% parentDir = '~/Bethany/paclab';
-parentDir = '~/code/pac/paclab';
+parentDir = '~/Bethany/paclab';
+% parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 dataDir = sprintf('%s/Subject_folders',parentDir);
 dataset = 3;
