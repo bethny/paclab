@@ -19,7 +19,7 @@
 % 12 diff / horiz / + flankers
 
 % SUBJECTS
-% 1 
+% 1 Bethany
 % 2 
 % 3 
 % 4 
@@ -41,16 +41,18 @@ try
     blockType = input('\n No-action (0) or grasp (1): ');
     task = {'noAction','grasp'};
 
-    oripath = pwd;
+%     oripath = pwd;
+    oripath = 'C:\Documents and Settings\js21\My Documents\MATLAB\Bethany';
     addpath(genpath(oripath));
+    cd(oripath);
     %Create a directory for this subject's data if not a practice trial
     if blockNum
         pathdata = strcat(pwd,filesep,'Subject_folders',filesep,'S0',num2str(subjNum),filesep);
-        if ~exist(pathdata)
-            mkdir(pathdata);
-        else
-            fprintf('This subject already exists.\n');
-        end
+%         if ~exist(pathdata)
+%             mkdir(pathdata);
+%         else
+%             fprintf('This subject already exists.\n');
+%         end
         cd(pathdata);
         filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main.txt');
         filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main.mat');
@@ -66,7 +68,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    Screen('Preference', 'SkipSyncTests', 1);
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -321,10 +323,10 @@ try
         diff = T2 + postStim - toc;
         WaitSecs(diff);
         Screen('Flip',w);
-        WaitSecs(graspDur);
+%         WaitSecs(graspDur);
         
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
+%         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+%         Screen('Flip',w);
         
         keypressed = 0;
         while ~keypressed
@@ -339,7 +341,7 @@ try
                 elseif responseKey(KbName('2'))
                     rspKey(trials) = 1;
                 end
-                if (~targID && responseKey(KbName('1'))) || (targID && responseKey(KbName('2'))) % 1 for same, 2 for diff
+                if (~targID(trials) && responseKey(KbName('1'))) || (targID(trials) && responseKey(KbName('2'))) % 1 for same, 2 for diff
                     acc(trials) = 1;
                     Beeper(1000);
                 else
@@ -373,18 +375,6 @@ try
     %--------- DONE --------------------
     % rudimentary data analysis
     if blockNum
-        % sum stimulus values at each reversal for separate staircases
-        sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
-        sumReversal(2) = sum(stimulusReversal(2,4:nReverse(2)));
-        
-        % means
-        stair1mean = sumReversal(1)/(nReverse(1)-3);
-        stair2mean = sumReversal(2)/(nReverse(2)-3);
-        
-        % standard deviation
-        StandardDev1 = std(stimulusReversal(1,4:nReverse(1)));
-        StandardDev2 = std(stimulusReversal(2,4:nReverse(2)));
-        
         ListenChar(1); % Turn keyboard output to command window on
         
         dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,targAngle(trials),acc(trial(WhichStair),WhichStair),...
@@ -393,12 +383,8 @@ try
             'roffset', [],'delimiter', '\t');
         save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder','realTrial');
-        
-        for i = 1:nStaircase
-            plot(stimulusReversal(i,1:nReverse(i)));hold on;
-        end
+        save(filenameMat,'trials','trial','acc','rspRatio','hemiIndex','rspKey','cndList','targTilt','baseOri',...
+            'flanker','targAngle','targID');
     end
     cd(oripath);
    

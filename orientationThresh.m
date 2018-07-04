@@ -4,7 +4,7 @@
 %3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
 % written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
-% SUBJECTS
+% SUBJECTS (--> PILOT FOLDER)
 % 1 Sydney
 % 2 James
 % 3 Christian
@@ -20,6 +20,9 @@
 % 11 Andrea
 % 12 Bethany
 % 13 Amos
+
+% SUBJECTS, NEW
+% 1 Bethany
 
 try
     clear all
@@ -53,9 +56,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    PsychDebugWindowConfiguration(1,0.5);
-    
-    Screen('Preference', 'SkipSyncTests', 1);
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     if filesep == '\'
         MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
@@ -112,10 +113,6 @@ try
     percChange = 0.2; % change signal by 20% at reversals
     
     %% initial value & stimulus settings
-    
-    key1 = 90; % z = CCW
-    key2 = 88; % x = CW
-    
     percCatch = 1/3; % 33% catch trials with display in left hemifield
     
     barContrast = .7;
@@ -172,6 +169,7 @@ try
     stimulus_onset_time(1:nTotalTrials) = zeros;
     r1(1:nTotalTrials) = zeros;
     acc(1:nTotalTrials,1:2) = zeros;
+    acc2(1:nTotalTrials,1:nStaircase) = zeros;
     rt(1:nTotalTrials,1:2) = zeros;
     Keyresponse(1:nTotalTrials,1:2) = zeros;
     stairOrder(1:nTotalTrials) = zeros;
@@ -252,7 +250,7 @@ try
         
         % show fixation cross & pre-cue
         Screen('FillRect', w, grey);
-        DrawFormattedText(w, cue{1}, 'Center', FIXATION_POSITION(2)-20, stimColor);
+        DrawFormattedText(w, cue{1}, 'Center', FIXATION_POSITION(2)-30, stimColor);
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
         Screen('Flip',w);
         WaitSecs(Tmarker);
@@ -276,7 +274,7 @@ try
             rotAngles = r1(trials);
         end
         
-        DrawFormattedText(w, cue{2}, 'Center', FIXATION_POSITION(2)-20, stimColor);
+        DrawFormattedText(w, cue{2}, 'Center', FIXATION_POSITION(2)-30, stimColor);
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles);
         Screen('FillOval', w, stimColor, FIXATION_POSITION, 10);
         Screen('Flip',w);
@@ -294,18 +292,19 @@ try
                     Screen('CloseAll');
                     ShowCursor;
                 end
-                if find(responseKey)==key1
+                if responseKey(KbName('1'))
                     rspRatio(1) = rspRatio(1) + 1;
                     rspKey(trials) = 0;
-                elseif find(responseKey)==key2
+                elseif responseKey(KbName('2'))
                     rspRatio(2) = rspRatio(2) + 1;
                     rspKey(trials) = 1;
                 end
-                if oriIndex(trials) == 1 && (find(responseKey)==key2) || oriIndex(trials) == -1 && ...
-                        (find(responseKey)==key1)
+                if (oriIndex(trials) == -1 && responseKey(KbName('1'))) || (oriIndex(trials) == 1 && responseKey(KbName('2')))
                     acc(trial(WhichStair),WhichStair) = 1;
+                    acc2(trials,WhichStair) = 1;
                 else
                     acc(trial(WhichStair),WhichStair) = 0;
+                    acc2(trials,WhichStair) = 0;
                 end
                 rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
                 Keyresponse(trial(WhichStair),WhichStair) = find(responseKey);
@@ -315,7 +314,8 @@ try
         end
         
         %staircase stuff
-        if acc(trial(WhichStair),WhichStair) % IF CORRECT
+%         if acc(trial(WhichStair),WhichStair) % IF CORRECT
+        if acc2(trials,WhichStair)
             Beeper(1000); %play high beep for correct answer
             if hemiIndex(trials) > 0
                 stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
@@ -432,7 +432,7 @@ try
         save(filenameTxt);
         save(filenameMatAll);
         save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder','realTrial','idxCatchTrial','thresholds');
+            'flankerIndex','stairOrder','realTrial','idxCatchTrials','thresholds');
         
         for i = 1:nStaircase
             plot(stimulusReversal(i,1:nReverse(i)));hold on;
