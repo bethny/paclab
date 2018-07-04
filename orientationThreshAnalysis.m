@@ -23,25 +23,35 @@
 %%
 clear all
 close all
-parentDir = '~/Bethany/paclab';
-% parentDir = '~/code/pac/paclab';
+
+analysis = 1; % 0 if thresh, 1 if main exp
+dataset = 3; % only valid if thresh
+
+% parentDir = '~/Bethany/paclab';
+parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 dataDir = sprintf('%s/Subject_folders',parentDir);
-dataset = 3;
 
-subj = sort(strsplit(ls(dataDir)));
-subj = subj(5:end); % ALL SUBJ
-if dataset == 1
-    subj = subj(2:5); % NO BASELINE
-    idx = 18;
-elseif dataset == 2
-    subj = subj(6:9); % WITH BASELINE
-    idx = 18;
-elseif dataset == 3
-    subj = subj(10:end); % WITH BASELINE, NOISE MASK
-    idx = 19;
+if ~analysis
+    dataDir = sprintf('%s/Pilot',dataDir);
+    subj = sort(strsplit(ls(dataDir)));
+    subj = subj(5:end); % ALL SUBJ
+    if dataset == 1
+        subj = subj(2:5); % NO BASELINE
+        idx = 18;
+    elseif dataset == 2
+        subj = subj(6:9); % WITH BASELINE
+        idx = 18;
+    elseif dataset == 3
+        subj = subj(10:end); % WITH BASELINE, NOISE MASK
+        idx = 19;
+    end
+else
+    subj = sort(strsplit(ls(dataDir)));
+    subj = subj(6:end);
 end
 
+%%
 for s = 1:length(subj)
     curSubj = subj{s};
     subjNum = str2num(curSubj(2:3));

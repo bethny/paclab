@@ -30,6 +30,9 @@
 % 9
 
 try
+    clear all
+    close all
+    
     VIEWING_DISTANCE_CM = 52;
     MONITOR_WIDTH_CM = 44;
     
@@ -174,9 +177,9 @@ try
     difftrials = 0;
     stimulus_onset_time(1:nTotalTrials) = zeros;
     targAngle(1:nTotalTrials) = zeros;
-    acc(1:nTotalTrials,1:2) = zeros;
-    rt(1:nTotalTrials,1:2) = zeros;
-    Keyresponse(1:nTotalTrials,1:2) = zeros;
+    acc(1:nTotalTrials) = zeros;
+    rt(1:nTotalTrials) = zeros;
+    Keyresponse(1:nTotalTrials) = zeros;
     rspKey = zeros(1,nTotalTrials);
     rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     
@@ -377,14 +380,13 @@ try
     if blockNum
         ListenChar(1); % Turn keyboard output to command window on
         
-        dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,targAngle(trials),acc(trial(WhichStair),WhichStair),...
-            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials),...
-            flankerIndex(trials)],'-append', ...
-            'roffset', [],'delimiter', '\t');
-        save(filenameTxt);
+%         dlmwrite(filenameTxt,[targAngle(trials),acc(trials),,hemiIndex(trials),rspKey(trials),...
+%             flankerIndex(trials)],'-append', ...
+%             'roffset', [],'delimiter', '\t');
+%         save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','acc','rspRatio','hemiIndex','rspKey','cndList','targTilt','baseOri',...
-            'flanker','targAngle','targID');
+        save(filenameMat,'trials','acc','rspRatio','hemiIndex','rspKey','cndList','targTilt','baseOri',...
+            'flanker','targAngle','targID','nTotalTrials');
     end
     cd(oripath);
    
