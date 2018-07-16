@@ -65,11 +65,11 @@ for s = 1:length(subj)
     
     stimRev = data.stimulusReversal;   
     nReverse(s,:) = data.nReverse;
-    if idx == 18
-        trialsPerStair = data.trial;
-    else
+%     if idx == 18
+%         trialsPerStair = data.trial;
+%     else
         trialsPerStair = data.realTrial;
-    end
+%     end
     acc = data.acc;
     acc = acc(1:max(trialsPerStair),:); % already split up by staircase
     

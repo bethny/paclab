@@ -137,12 +137,11 @@ try
     markerWaitList = [0.75, 1, 1.25];
     mn = 3; % the number of markerWait;
     
-    threshMultiplier = 1.5;
-    
     T1 = .1; 
     ISI = .3;
     T2 = .1;
     postStim = .05;
+    graspDur = 3;
   
     hemiIndex = ones(1, nTotalTrials);
     hemiIndex(catchIdx) = -1;
@@ -240,9 +239,9 @@ try
         flanker(trials) = cnds(3,curCnd);
         
         if flanker
-            threshold = thresholds(2)*threshMultiplier;
+            threshold = thresholds(2)*2;
         else
-            threshold = thresholds(1)*threshMultiplier;
+            threshold = thresholds(1)*2;
         end
         
         if targID(trials)
@@ -289,23 +288,9 @@ try
         stimulus_onset_time(trials) = tic; % Mark the time when the display went up
         WaitSecs(T1);
         
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        WaitSecs(ISI);
-        
-        Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles2);
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        WaitSecs(T2);
-        
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        
-        tic
-        % NOISE CIRCLE
         circRect = SetRect(0,0, barLenPx, barLenPx);
         cDstRects(:,1) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        if flanker(trials)
+        if flanker
             cDstRects(:,2) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
                 yCen - tfDistPx/sqrt(2));
             cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
@@ -324,7 +309,28 @@ try
         Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],5,1)');
         Screen('FillRect', sqAperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
         Screen('DrawTextures', w, sqAperture, [], cDstRects(:,1), [], 0); 
-        if flanker(trials)
+        if flanker
+            Screen('FillOval', circAperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
+            Screen('DrawTextures', w, circAperture, [], cDstRects(:,2:5), [], 0);        
+        end
+        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+        Screen('Flip',w);
+        WaitSecs(ISI);
+        
+        Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles2);
+        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+        Screen('Flip',w);
+        WaitSecs(T2);
+        
+        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+        Screen('Flip',w);
+        
+        tic
+        % NOISE CIRCLE
+        Screen('DrawTextures', w, tex, [], cDstRects, [], 0, [], [1 1 1], [], [], repmat([contrast, 0, 0, 0],5,1)');
+        Screen('FillRect', sqAperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
+        Screen('DrawTextures', w, sqAperture, [], cDstRects(:,1), [], 0); 
+        if flanker
             Screen('FillOval', circAperture, [255 255 255 0], circRect); % alpha = 0 so noise can come thru
             Screen('DrawTextures', w, circAperture, [], cDstRects(:,2:5), [], 0);        
         end
@@ -333,6 +339,10 @@ try
         diff = T2 + postStim - toc;
         WaitSecs(diff);
         Screen('Flip',w);
+%         WaitSecs(graspDur);
+        
+%         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
+%         Screen('Flip',w);
         
         keypressed = 0;
         while ~keypressed
