@@ -30,6 +30,9 @@
 % 9
 
 try
+    clear all
+    close all
+    
     VIEWING_DISTANCE_CM = 52;
     MONITOR_WIDTH_CM = 44;
     
@@ -38,26 +41,37 @@ try
     
     subjNum = input('\n Enter subject number: ');
     blockNum = input('\n Enter block number: ');
-    blockType = input('\n No-action (0) or grasp (1): ');
+    resume = input('\n Resume a crashed experiment? (0 = no, 1 = yes): ');
+    grasping = input('\n No-action (0) or grasp (1): ');
     task = {'noAction','grasp'};
-
-    oripath = pwd;
-%     oripath = 'C:\Documents and Settings\js21\My Documents\MATLAB\Bethany';
+   
+    oripath = 'C:\Documents and Settings\js21\My Documents\MATLAB\Bethany';
     addpath(genpath(oripath));
     cd(oripath);
-    %Create a directory for this subject's data if not a practice trial
     pathdata = strcat(pwd,filesep,'Subject_folders',filesep,'S0',num2str(subjNum),filesep);
+    
+    if grasping
+        calibrate = input('\n Calibrate? (0 = no, 1 = yes): ');
+        calibFile = strcat(pathdata,num2str(subjNum),'_calibration.mat');  %% calibration filename
+        if exist(calibFile, 'file') ~= 2 || calibrate
+            [affine_alignment1, screen_y1, marker_pos1] = calibrate_sensor(1);
+            [affine_alignment2, screen_y2, marker_pos2] = calibrate_sensor(2);
+            save(calibFile,'affine_alignment1','screen_y1','marker_pos1','affine_alignment2','screen_y2','marker_pos2');
+        else
+            load(calibFile);
+        end
+    end
+    
     if blockNum
-        
-%         if ~exist(pathdata)
-%             mkdir(pathdata);
-%         else
-%             fprintf('This subject already exists.\n');
-%         end
         cd(pathdata);
-        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main.txt');
-        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main.mat');
-        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d_%s',subjNum,blockNum,task{blockType+1}),'_main_all.mat');
+        filenameMat = strcat(pathdata,sprintf('%dblock%d_%s',subjNum,blockNum,task{grasping+1}),'.mat');
+        filenameMatAll = strcat(pathdata,sprintf('%dblock%d_%s',subjNum,blockNum,task{grasping+1}),'_all.mat');
+    end
+    
+    if resume 
+        load(filenameMatAll);
+        fprintf(sprintf('Experiment resumed at trial %d\n',trials))
+        resume = 1;
     end
     
     % get threshold info
@@ -69,12 +83,10 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
-    Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
-    if filesep == '\'
-        MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
-        Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
-    end
+    MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
+    Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
+
     [xCen, yCen] = RectCenter(winRect);
     [swidth, ~] = Screen('WindowSize', WhichScreen);
     screenCenter = [xCen yCen];
@@ -87,41 +99,56 @@ try
     HideCursor;
     secPerFrame = Screen('GetFlipInterval',w);
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
+
+    %% Tracker Thresholds
+    % How close must subjects be to marker to start trial?
+    marker_dist_threshold = 1; %cm
+    % How close must subjects be to screen to count as a touch?
+    screen_y_dist_threshold = .5; %cm
+    % Space beyond the shape itself that subject can touch to count as a response
+    extraSpace = 30;
+    % How close must subjects be to target, on both x and y dimensions, to count as a response?
+    target_x_dist_threshold = extraSpace*1.5;
+    target_y_dist_threshold = extraSpace*2.5;
     
     %% experiment settings
     
-    nTrialPerCnd = 24/2; 
+    nTrialPerCnd = 24/2; % 24 total over 2 blocks, 12 per block
     nFlanker = 3; % +/-/0
     nBaseOri = 2; % 0/90
     nTarg = 2; % same/diff
+    nCrowding = 2; % actual num of crowding conditions; 12 cnd total but 8 who get 12 each
     nCnd = nFlanker*nTarg*nBaseOri;
     
-    trialNumber = nTrialPerCnd*nCnd;
+    trialNumber = nTrialPerCnd*nBaseOri*nTarg*nCrowding;
     
-    percCatch = 1/3; % 33% catch trials with display in left hemifield
+    percCatch = 1/3; % 25% catch trials with display in left hemifield (33% of non-catch trials)
     nCatch = trialNumber*percCatch;
     nTotalTrials = nCatch + trialNumber;
     
-    mixedTrialIdx = randperm(nTotalTrials);
-    catchIdx = mixedTrialIdx(1:nCatch);
-    nonCatchIdx = mixedTrialIdx(nCatch+1:end);
-    
-    catchCnd = repmat([1:nCnd],1,length(catchIdx)/nCnd);
-    x = randperm(nCatch);
-    catchCnd = catchCnd(x);
-    
-    nonCatchCnd = repmat([1:nCnd],1,length(nonCatchIdx)/nCnd);
-    x = randperm(nTotalTrials - nCatch);
-    nonCatchCnd = nonCatchCnd(x);
-    
-    cndList = zeros(1,nTotalTrials);
-    cndList(catchIdx) = catchCnd;
-    cndList(nonCatchIdx) = nonCatchCnd;
-    
-    targList = [0 1]; % 0 = same, 1 = diff
-    baseOriList = [0 90];
-    flankerList = [-1 0 1];
-    cnds = CombVec(targList,baseOriList,flankerList);
+    if ~resume
+        mixedTrialIdx = randperm(nTotalTrials);
+        catchIdx = mixedTrialIdx(1:nCatch);
+        nonCatchIdx = mixedTrialIdx(nCatch+1:end);
+
+        catchCnd = [repmat(1:4,1,nTrialPerCnd*percCatch/2),repmat(5:8,1,nTrialPerCnd*percCatch),...
+            repmat(9:12,1,nTrialPerCnd*percCatch/2)];
+        x = randperm(nCatch);
+        catchCnd = catchCnd(x);
+
+        nonCatchCnd = [repmat(1:4,1,nTrialPerCnd/2),repmat(5:8,1,nTrialPerCnd),repmat(9:12,1,nTrialPerCnd/2)];
+        x = randperm(nTotalTrials - nCatch);
+        nonCatchCnd = nonCatchCnd(x);
+
+        cndList = zeros(1,nTotalTrials);
+        cndList(catchIdx) = catchCnd;
+        cndList(nonCatchIdx) = nonCatchCnd;
+
+        targList = [0 1]; % 0 = same, 1 = diff
+        baseOriList = [0 90];
+        flankerList = [-1 0 1];
+        cnds = CombVec(targList,baseOriList,flankerList);
+    end
     
     %% initial value & stimulus settings
     
@@ -142,16 +169,19 @@ try
     T1 = .1; 
     ISI = .3;
     T2 = .1;
-    postStim = .05;
+    RTdeadline = 10;
+    extraMeasurementTime = .2; 
   
-    hemiIndex = ones(1, nTotalTrials);
-    hemiIndex(catchIdx) = -1;
-    
-    nDiffTrials = sum(mod(cndList,2));
-    targTiltList = [-1 1];
-    targTiltIdx = repmat(targTiltList,1,nDiffTrials/2);
-    n = randperm(nDiffTrials);
-    targTiltIdx = targTiltIdx(n);
+    if ~resume
+        hemiIndex = ones(1, nTotalTrials);
+        hemiIndex(catchIdx) = -1;
+
+        nDiffTrials = sum(mod(cndList,2));
+        targTiltList = [-1 1];
+        targTiltIdx = repmat(targTiltList,1,nDiffTrials/2);
+        n = randperm(nDiffTrials);
+        targTiltIdx = targTiltIdx(n);
+    end
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
@@ -178,15 +208,22 @@ try
     rotAnglesInst = [-20 20];
     
     % initialize stuff for feedback
-    trials = 0; % initiate trial counter
-    difftrials = 0;
-    stimulus_onset_time(1:nTotalTrials) = zeros;
-    targAngle(1:nTotalTrials) = zeros;
-    acc(1:nTotalTrials,1:2) = zeros;
-    rt(1:nTotalTrials,1:2) = zeros;
-    Keyresponse(1:nTotalTrials,1:2) = zeros;
-    rspKey = zeros(1,nTotalTrials);
-    rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
+    if ~resume
+        trials = 0; % initiate trial counter
+        difftrials = 0;
+        initTime(1:nTotalTrials) = zeros;
+        S1_onset_time(1:nTotalTrials) = zeros;
+        ISI_onset_time(1:nTotalTrials) = zeros;
+        S2_onset_time(1:nTotalTrials) = zeros;
+        Mask_onset_time(1:nTotalTrials) = zeros;
+        targAngle(1:nTotalTrials) = zeros;
+        acc(1:nTotalTrials) = zeros;
+        acc_grasp(1:nTotalTrials) = zeros;
+        rt(1:nTotalTrials) = zeros;
+        Keyresponse(1:nTotalTrials) = zeros;
+        rspKey = zeros(1,nTotalTrials);
+        rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
+    end
     
     %% instructions 
     KbName('UnifyKeyNames');
@@ -233,11 +270,26 @@ try
         clear dstRects
         clear cDstRects
         
+        % Subject reached somwhere?
+        reachedTo = 0;
+        % Stop looking for a reach movement?
+        exit = 0;
+        
+        fprintf(sprintf('OLD TRIAL NUMBER %d',trials))
         trials = trials + 1 
+        fprintf(sprintf('NEW TRIAL NUMBER %d',trials))
+        
         curCnd = cndList(trials); 
         targID(trials) = cnds(1,curCnd);
         baseOri(trials) = cnds(2,curCnd);
         flanker(trials) = cnds(3,curCnd);
+        
+        clear pos 
+        pos(1,:) = [xCen + eccPx*hemiIndex(trials), yCen]; % center bar
+        pos(2,:) = [xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)]; % UR
+        pos(3,:) = [xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)]; % LL
+        pos(4,:) = [xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)]; % UL
+        pos(5,:) = [xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)]; % LR
         
         if flanker
             threshold = thresholds(2)*threshMultiplier;
@@ -255,18 +307,61 @@ try
         priorityLevel = MaxPriority(w); % grab high priority to make generating movie as fast as possible
         Priority(priorityLevel);
         
+        if grasping
+            % Reset data holders - these store reach data for each trial
+            SOT_data = [];
+            xy1_data1 = [];
+            xy1_data2 = [];
+            currXYZ1_data1 = [];
+            currXYZ1_data2 = [];
+            currXYZ1_data3 = [];
+            xy2_data1 = [];
+            xy2_data2 = [];
+            currXYZ2_data1 = [];
+            currXYZ2_data2 = [];
+            currXYZ2_data3 = [];
+            currFrame_data = [];
+
+            % Read the tracker once
+            clear data
+            data = tracker2(5,160);
+
+        %    Wait until they put their finger at the marker to start trial    
+            while (abs(marker_pos1(1) - data(3,1)) > marker_dist_threshold ||...
+                abs(marker_pos1(2) - data(4,1)) > marker_dist_threshold ||...
+                abs(marker_pos1(3) - data(5,1)) > marker_dist_threshold)
+                clear data;
+                data = tracker2(5,160);
+            end
+        end
+        
         % show fixation cross
         Screen('FillRect', w, grey);
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        WaitSecs(markerWait(trials));
+        initTime(trials) = Screen('Flip',w);
+        fixTime = tic;
+        if grasping
+            % Loop to ensure they stay at the marker for however long "markerWait" is
+            while (toc(fixTime) < markerWait(trials)-secPerFrame)
+                %clear curr_xyz curr_frame;
+                clear data;
+                %[curr_xyz1,curr_frame1] = tracker(5,160,1);   
+                data = tracker2(5,160); 
+                    if (abs(marker_pos1(1) - data(3,1)) > marker_dist_threshold ||...
+                        abs(marker_pos1(2) - data(4,1)) > marker_dist_threshold ||...
+                        abs(marker_pos1(3) - data(5,1)) > marker_dist_threshold)
+                        markerTime = tic;
+                    end       
+            end 
+            old_frame=data(2,1);
+        else
+            WaitSecs(markerWait(trials));
+        end
         
         % draw stimulus display
-        dstRects(:,1) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        dstRects(:,2) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2));
-        dstRects(:,3) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2));
-        dstRects(:,4) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), yCen - tfDistPx/sqrt(2)); % UL
-        dstRects(:,5) = CenterRectOnPoint(texrect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), yCen + tfDistPx/sqrt(2)); % LR
+        for i = 1:5 % n bars
+            dstRects(:,i) = CenterRectOnPoint(texrect, pos(i,1), pos(i,2));
+        end
         
         if ~flanker(trials)
             dstRects = dstRects(:,1);
@@ -285,36 +380,164 @@ try
         
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles1);
         Screen('FillOval', w, stimColor, FIXATION_POSITION, 10);
-        Screen('Flip',w);
-        stimulus_onset_time(trials) = tic; % Mark the time when the display went up
-        WaitSecs(T1);
+        S1_onset_time(trials) = Screen('Flip',w); % Mark the time when the display went up
+        timeElapsed = 0;
+        if grasping
+            S1_onset = tic;
+            while (toc(S1_onset) < T1-secPerFrame)
+                %'IN WHILE LOOP'
+                % Read the tracker
+                clear data;
+                %clear curr_xyz curr_frame;
+                %[curr_xyz1,curr_frame1] = tracker(5,160,1);
+                data = tracker2(5,160);
+
+                % If it's a new sample...
+                if data(2,1)~=old_frame
+                    %re-define the old frame as current frame
+                    old_frame=data(2,1); 
+                    %'IN IF STATEMENT!'
+                    %Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance
+                    % to screen for real-time feedback
+                    xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
+                    xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
+                    curr_pixel_xy1 = [xy1(:,1)];
+                    curr_pixel_xy2 = [xy2(:,1)];
+                    screen_y_dist1 = norm(data(4,1)-screen_y1);
+                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
+                    % how much time since stimulus onset?
+                    SOT_data = [SOT_data;toc(S1_onset)];
+                    % x and y hand positions in pixel space
+                    xy1_data1 = [xy1_data1;xy1(1)];
+                    xy1_data2 = [xy1_data2;xy1(2)];
+                    xy2_data1 = [xy2_data1;xy2(1)];
+                    xy2_data2 = [xy2_data2;xy2(2)];
+                    % x,y, and z hand positions in real space (cm) from big magnet
+                    currXYZ1_data1 = [currXYZ1_data1;data(3,1)];
+                    currXYZ1_data2 = [currXYZ1_data2;data(5,1)];
+                    currXYZ1_data3 = [currXYZ1_data3;data(4,1)];
+                    currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
+                    currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
+                    currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
+                    % What is the current "frame" number (frame meaning number in
+                    % sequence of samples recorded by tracker)
+                    currFrame_data = [currFrame_data;data(2,1)];
+                end
+            end
+        else
+            WaitSecs(T1);
+        end
         
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        WaitSecs(ISI);
+        ISI_onset_time(trials) = Screen('Flip',w,S1_onset_time(trials)+T1-secPerFrame);
+        
+        if grasping
+            ISI_onset = tic;
+            while (toc(ISI_onset) < ISI-secPerFrame)
+                %'IN WHILE LOOP'
+                % Read the tracker
+                clear data;
+                %clear curr_xyz curr_frame;
+                %[curr_xyz1,curr_frame1] = tracker(5,160,1);
+                data = tracker2(5,160);
+
+                % If it's a new sample...
+                if data(2,1)~=old_frame
+                    %re-define the old frame as current frame
+                    old_frame=data(2,1); 
+                    %'IN IF STATEMENT!'
+                    %Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance
+                    % to screen for real-time feedback
+                    xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
+                    xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
+                    curr_pixel_xy1 = [xy1(:,1)];
+                    curr_pixel_xy2 = [xy2(:,1)];
+                    screen_y_dist1 = norm(data(4,1)-screen_y1);
+                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
+                    % how much time since stimulus onset?
+                    SOT_data = [SOT_data;toc(S1_onset)];
+                    % x and y hand positions in pixel space
+                    xy1_data1 = [xy1_data1;xy1(1)];
+                    xy1_data2 = [xy1_data2;xy1(2)];
+                    xy2_data1 = [xy2_data1;xy2(1)];
+                    xy2_data2 = [xy2_data2;xy2(2)];
+                    % x,y, and z hand positions in real space (cm) from big magnet
+                    currXYZ1_data1 = [currXYZ1_data1;data(3,1)];
+                    currXYZ1_data2 = [currXYZ1_data2;data(5,1)];
+                    currXYZ1_data3 = [currXYZ1_data3;data(4,1)];
+                    currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
+                    currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
+                    currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
+                    % What is the current "frame" number (frame meaning number in
+                    % sequence of samples recorded by tracker)
+                    currFrame_data = [currFrame_data;data(2,1)];
+                end
+            end    
+        else
+            WaitSecs(ISI);
+        end
         
         Screen('DrawTextures', w, barTexVert, [], dstRects, rotAngles2);
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        WaitSecs(T2);
-        
-        Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-        Screen('Flip',w);
-        
-        tic
-        % NOISE CIRCLE
-        circRect = SetRect(0,0, barLenPx, barLenPx);
-        cDstRects(:,1) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials), yCen); % position the bars; target
-        if flanker(trials)
-            cDstRects(:,2) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
-                yCen - tfDistPx/sqrt(2));
-            cDstRects(:,3) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
-                yCen + tfDistPx/sqrt(2));
-            cDstRects(:,4) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) - tfDistPx/sqrt(2), ...
-                yCen - tfDistPx/sqrt(2));
-            cDstRects(:,5) = CenterRectOnPoint(circRect, xCen + eccPx*hemiIndex(trials) + tfDistPx/sqrt(2), ...
-                yCen + tfDistPx/sqrt(2));
+        S2_onset_time(trials) = Screen('Flip',w,ISI_onset_time(trials)+ISI-secPerFrame);
+       
+        if grasping
+            S2_onset = tic;
+            while (toc(S2_onset) < T2-secPerFrame)
+                %'IN WHILE LOOP'
+                % Read the tracker
+                clear data;
+                %clear curr_xyz curr_frame;
+                %[curr_xyz1,curr_frame1] = tracker(5,160,1);
+                data = tracker2(5,160);
+
+                % If it's a new sample...
+                if data(2,1)~=old_frame
+                    %re-define the old frame as current frame
+                    old_frame=data(2,1);
+                    %'IN IF STATEMENT!'
+                    %Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance
+                    % to screen for real-time feedback
+                    xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
+                    xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
+                    curr_pixel_xy1 = [xy1(:,1)];
+                    curr_pixel_xy2 = [xy2(:,1)];
+                    screen_y_dist1 = norm(data(4,1)-screen_y1);
+                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
+                    % how much time since stimulus onset?
+                    SOT_data = [SOT_data;toc(S1_onset)];
+                    % x and y hand positions in pixel space
+                    xy1_data1 = [xy1_data1;xy1(1)];
+                    xy1_data2 = [xy1_data2;xy1(2)];
+                    xy2_data1 = [xy2_data1;xy2(1)];
+                    xy2_data2 = [xy2_data2;xy2(2)];
+                    % x,y, and z hand positions in real space (cm) from big magnet
+                    currXYZ1_data1 = [currXYZ1_data1;data(3,1)];
+                    currXYZ1_data2 = [currXYZ1_data2;data(5,1)];
+                    currXYZ1_data3 = [currXYZ1_data3;data(4,1)];
+                    currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
+                    currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
+                    currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
+                    % What is the current "frame" number (frame meaning number in
+                    % sequence of samples recorded by tracker)
+                    currFrame_data = [currFrame_data;data(2,1)];
+                end
+            end
+        else
+            WaitSecs(T2);
         end
+
+        % NOISE CIRCLE
+        circRect = SetRect(0,0, barLenPx, barLenPx);       
+        for i = 1:5 % n bars
+            cDstRects(:,i) = CenterRectOnPoint(circRect, pos(i,1), pos(i,2));
+        end       
+        if ~flanker(trials)
+            cDstRects = cDstRects(:,1);
+        end        
         circAperture = Screen('OpenOffscreenwindow', w, 128, circRect); % offscreen aperture for circle mask
         sqAperture = Screen('OpenOffscreenwindow', w, 128, circRect);
         Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -329,16 +552,135 @@ try
             Screen('DrawTextures', w, circAperture, [], cDstRects(:,2:5), [], 0);        
         end
         Screen('FillOval', w, stimColor,FIXATION_POSITION,10);
-
-        diff = T2 + postStim - toc;
-        WaitSecs(diff);
-        Screen('Flip',w);
+        Mask_onset_time(trials) = Screen('Flip',w,S2_onset_time(trials)+T2-secPerFrame);
         
+        if grasping
+            if baseOri(trials) % IF HORIZONTAL
+                pos_1 = [pos(1,1)+barLenPx/2, pos(1,2)];
+                pos_2 = [pos(1,1)-barLenPx/2, pos(1,2)];
+            else % IF VERTICAL
+                pos_1 = [pos(1,1), pos(1,2)-barLenPx/2];
+                pos_2 = [pos(1,1), pos(1,2)+barLenPx/2];
+            end
+            mask_onset = tic;
+            while (toc(mask_onset) < RTdeadline && ~exit)
+                %'IN WHILE LOOP'
+                % Read the tracker
+                clear data;
+                data = tracker2(5,160);
+
+                % If it's a new sample...
+                if data(2,1)~=old_frame
+                    %re-define the old frame as current frame
+                    old_frame=data(2,1);
+                    %'IN IF STATEMENT!'
+                    %Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance
+                    % to screen for real-time feedback
+                    xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
+                    xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
+                    curr_pixel_xy1 = [xy1(:,1)];
+                    curr_pixel_xy2 = [xy2(:,1)];
+                    screen_y_dist1(trials) = norm(data(4,1)-screen_y1);
+                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
+                    % how much time since stimulus onset?
+                    SOT_data = [SOT_data;toc(S1_onset)];
+                    % x and y hand positions in pixel space
+                    xy1_data1 = [xy1_data1;xy1(1)];
+                    xy1_data2 = [xy1_data2;xy1(2)];
+                    xy2_data1 = [xy2_data1;xy2(1)];
+                    xy2_data2 = [xy2_data2;xy2(2)];
+                    % x,y, and z hand positions in real space (cm) from big magnet
+                    currXYZ1_data1 = [currXYZ1_data1;data(3,1)];
+                    currXYZ1_data2 = [currXYZ1_data2;data(5,1)];
+                    currXYZ1_data3 = [currXYZ1_data3;data(4,1)];
+                    currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
+                    currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
+                    currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
+                    % What is the current "frame" number (frame meaning number in
+                    % sequence of samples recorded by tracker)
+                    currFrame_data = [currFrame_data;data(2,1)];
+
+                    % If observers got close enough to the screen, and if they got
+                    % within range of a stimulus, end trial and say where they
+                    % reached, record time elapsed, and set exit to 1 to exit the
+                    % hand recording loop
+                    %'Screen touched?'
+                    cc = screen_y_dist1(trials) < screen_y_dist_threshold;
+                    if screen_y_dist1(trials) < screen_y_dist_threshold && ~exit
+                        fprintf(sprintf('Trial %d: Screen touched!\n',trials))
+                        %'Screen touched!'
+                        reachedTo = 4;
+                        if (abs(xy1(1)-pos_1(1))<target_x_dist_threshold && abs(xy1(2)-pos_1(2))...
+                                <target_y_dist_threshold) && (abs(xy2(1)-pos_2(1))<target_x_dist_threshold ...
+                                && abs(xy2(2)-pos_2(2))<target_y_dist_threshold)
+                            reachedTo = 1;
+                            fprintf(sprintf('Trial %d: Screen touched & correct grasp!\n',trials))
+%                             Beeper(1500,.9,.5); % super high beep
+                            acc_grasp(trials) = 1; 
+                            timeElapsed = toc(S1_onset);
+                        else
+                            fprintf(sprintf('Trial %d: Screen touched & incorrect grasp!\n',trials))
+                        end
+                        if timeElapsed > RTdeadline
+                            Beeper(500,.9); % two low beeps if you didn't make the time limit
+                            WaitSecs(.3);
+                            Beeper(500,.9);
+                            exit=1;
+                        else
+                            Beeper(1000,.9); % high beep if you made the time limit
+                            exit=1;
+                        end
+                    else
+                    end
+
+                end
+            end
+            if ~reachedTo
+                Beeper(500,.9);
+                WaitSecs(.3);
+                Beeper(500,.9);
+                timeElapsed = 0;
+                reachTime = 0;
+                acc_grasp(trials) = 0;
+            end
+             % mark the time when the end loop begins
+            trialLoopEnd = tic;
+            % Record movement for an extra "extraMeasurementTime" seconds to get velocity profiles
+            while (toc(trialLoopEnd) < extraMeasurementTime)
+                % Query the tracker
+                clear data;
+                data = tracker2(5,160);
+                curr_frame = data(2,1);
+                if curr_frame~=old_frame
+                    %re-define the old frame as current frame
+                    old_frame=curr_frame;
+                    % Write data to file
+                    xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
+                    xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
+                    SOT_data = [SOT_data;toc(S1_onset)];
+                    xy1_data1 = [xy1_data1;xy1(1)];
+                    xy1_data2 = [xy1_data2;xy1(2)];
+                    xy2_data1 = [xy2_data1;xy2(1)];
+                    xy2_data2 = [xy2_data2;xy2(2)];
+                    currXYZ1_data1 = [currXYZ1_data1;data(3,1)];
+                    currXYZ1_data2 = [currXYZ1_data2;data(5,1)];
+                    currXYZ1_data3 = [currXYZ1_data3;data(4,1)];
+                    currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
+                    currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
+                    currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
+                    currFrame_data = [currFrame_data;data(2,1)];
+                    grasp_width = data(3,1) - data(3,2);
+                end
+            end
+        end
+       
         keypressed = 0;
         while ~keypressed
             [keyIsDown, secs, responseKey] = KbCheck;
             if keyIsDown
                 if responseKey(KbName('q'))
+                    ReadPnoRTAllML_ver4(0);
                     Screen('CloseAll');
                     ShowCursor;
                 end
@@ -347,19 +689,22 @@ try
                 elseif responseKey(KbName('2'))
                     rspKey(trials) = 1;
                 end
-                if (~targID(trials) && responseKey(KbName('1'))) || (targID(trials) && responseKey(KbName('2'))) % 1 for same, 2 for diff
+                if (~targID(trials) && responseKey(KbName('1'))) || (targID(trials) && responseKey(KbName('2'))) 
+                    % 1 for same, 2 for diff
                     acc(trials) = 1;
                     Beeper(1000);
                 else
                     acc(trials) = 0;
                     Beeper(500);
                 end
-                rt(trials) = (secs-stimulus_onset_time(trials));
+                rt(trials) = (secs-S1_onset_time(trials));
                 Keyresponse(trials) = find(responseKey);
                 KbReleaseWait;
                 keypressed = 1;
             end
         end
+        Screen('FillRect', w, grey);
+        Screen('Flip',w);
         
         ListenChar(0); %disables keyboard and flushes.
         ListenChar(2); %enables keyboard, no output to command window
@@ -373,21 +718,27 @@ try
             KbWait;
             while KbCheck; end
         end
+        
+        if grasping
+            save(filenameMatAll);
+            cd(oripath);
         end
+    end
     
+    % Inform subjects that experiment is over
+    endDisplay = ['The block is over.\n\n Please go inform the experimenter.'];
+    DrawFormattedText(w, endDisplay, 'center', 'center', [255 255 255]);
+    Screen('Flip', w);
+    WaitSecs(5);
+
     Screen ('CloseAll');
+    ReadPnoRTAllML_ver4(0);
     ShowCursor;
     
     %--------- DONE --------------------
     % rudimentary data analysis
     if blockNum
         ListenChar(1); % Turn keyboard output to command window on
-        
-%         dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,targAngle(trials),acc(trial(WhichStair),WhichStair),...
-%             stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials),...
-%             flankerIndex(trials)],'-append', ...
-%             'roffset', [],'delimiter', '\t');
-%         save(filenameTxt);
         save(filenameMatAll);
         save(filenameMat,'trials','acc','rspRatio','hemiIndex','rspKey','cndList','targTilt','baseOri',...
             'flanker','targAngle','targID');

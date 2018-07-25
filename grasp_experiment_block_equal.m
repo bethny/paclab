@@ -142,14 +142,17 @@ dstIndex(:,:)=rorder(ordIndex(:,:))>6;
 dstIndex=dstIndex+1;
 for q=1:nrun
     for qq=1:trialNumber
-        if (rorder(ordIndex(q,qq))==1)||(rorder(ordIndex(q,qq))==4)||(rorder(ordIndex(q,qq))==7)||(rorder(ordIndex(q,qq))==10)
+        if (rorder(ordIndex(q,qq))==1)||(rorder(ordIndex(q,qq))==4)||(rorder(ordIndex(q,qq))==7)||...
+                (rorder(ordIndex(q,qq))==10)
             oriIndex1(q,qq)=1;
-        elseif (rorder(ordIndex(q,qq))==2)||(rorder(ordIndex(q,qq))==5)||(rorder(ordIndex(q,qq))==8)||(rorder(ordIndex(q,qq))==11)
+        elseif (rorder(ordIndex(q,qq))==2)||(rorder(ordIndex(q,qq))==5)||(rorder(ordIndex(q,qq))==8)||...
+                (rorder(ordIndex(q,qq))==11)
             oriIndex1(q,qq)=2;
         else
             oriIndex1(q,qq)=3;
         end;
-        if (rorder(ordIndex(q,qq))==1)||(rorder(ordIndex(q,qq))==2)||(rorder(ordIndex(q,qq))==3)||(rorder(ordIndex(q,qq))==7)||(rorder(ordIndex(q,qq))==8)||(rorder(ordIndex(q,qq))==9)
+        if (rorder(ordIndex(q,qq))==1)||(rorder(ordIndex(q,qq))==2)||(rorder(ordIndex(q,qq))==3)||...
+                (rorder(ordIndex(q,qq))==7)||(rorder(ordIndex(q,qq))==8)||(rorder(ordIndex(q,qq))==9)
             oriIndex2(q,qq)=1;
         else
             oriIndex2(q,qq)=2;
@@ -180,7 +183,7 @@ else
     orientation1=[-1.5*sth 0 1.5*sth];
     sizeIndex(1:3,1)=[1; 1; 1];
     gocue={'pointing','grasping','no action'};
-end;
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -521,22 +524,20 @@ for bb=rangeBegin1:nrun
                          reachedTo=4;
                          if strcmp(gocue(bb),'grasping')
                              
-                             if (abs(xy1(1)-pos_top(1))<target_x_dist_threshold && abs(xy1(2)-pos_top(2))<target_y_dist_threshold) &&  ...
-                                    (abs(xy2(1)-pos_bottom(1))<target_x_dist_threshold && abs(xy2(2)-pos_bottom(2))<target_y_dist_threshold) 
-                             %if (abs(curr_pixel_xy1(1)-rect_cen_x(1))<target_x_dist_threshold && abs(curr_pixel_xy1(2)-rect_cen_y(1))<target_y_dist_threshold)
+                             if (abs(xy1(1)-pos_top(1))<target_x_dist_threshold && abs(xy1(2)-pos_top(2))...
+                                     <target_y_dist_threshold) && (abs(xy2(1)-pos_bottom(1))<target_x_dist_threshold ...
+                                     && abs(xy2(2)-pos_bottom(2))<target_y_dist_threshold) 
                                 reachedTo = 1;
                                 acc(bb,i) = 1; 
                                 timeElapsed = toc(FirstShowtic(bb,i));
-        %                         reachTime = toc(reach_onset_time);
                                 
                              end
                          elseif strcmp(gocue(bb),'pointing')
-                             if (abs(xy1(1)-pos(dstIndex(bb,i),1))<target_x_dist_threshold && abs(xy1(2)-pos(dstIndex(bb,i),2))<target_y_dist_threshold)
-                             %if (abs(curr_pixel_xy1(1)-rect_cen_x(1))<target_x_dist_threshold && abs(curr_pixel_xy1(2)-rect_cen_y(1))<target_y_dist_threshold)
+                             if (abs(xy1(1)-pos(dstIndex(bb,i),1))<target_x_dist_threshold && ...
+                                     abs(xy1(2)-pos(dstIndex(bb,i),2))<target_y_dist_threshold)
                                 reachedTo = 2;
                                 acc(bb,i) = 1; 
                                 timeElapsed = toc(FirstShowtic(bb,i));
-        %                         reachTime = toc(reach_onset_time);
                              end
                          elseif  strcmp(gocue(bb),'no action')
                                 reachedTo = 3;
