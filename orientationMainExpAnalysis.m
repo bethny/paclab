@@ -7,94 +7,150 @@
 
 %%
 clear all
+clear all
 close all
+
+% WHICH DATASET?
+dataset = 1; % 0 = main exp no grasp, 1 = main exp with grasp
 
 % parentDir = '~/Bethany/paclab';
 parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 dataDir = sprintf('%s/Subject_folders',parentDir);
+if ~dataset
+    dataDir = sprintf('%s/Pilot_NoGrasp',dataDir);
+end
 subj = sort(strsplit(ls(dataDir)));
-subj = subj(6:end);
+subj = subj(7:end);
 
-noCrwdTargID = []; noCrwdRspKey = []; crwdTargID = []; crwdRspKey = [];
+NC_TargID = []; NC_RspKey = []; C_TargID = []; C_RspKey = [];
+NC_TargID_key = []; NC_RspKey_key = []; C_TargID_key = []; C_RspKey_key = [];
 
 for s = 1:length(subj)
     curSubj = subj{s};
     subjNum = str2num(curSubj(2:3));
     subjDir = sprintf('%s/%s',dataDir,curSubj);
-    blockFiles = mySubFiles(subjDir,'noAction_main_all.mat',9);
+    blockFiles = mySubFiles(subjDir,'all',13);
     
-    dataThresh = load(sprintf('%s/%dblock1_threshold_all.mat',subjDir,subjNum));
+    dataThresh = load(blockFiles{1});
     thresholds(s,:) = dataThresh.thresholds;
     
-    for b = 1:length(blockFiles)
-        data = load(sprintf('%s/%s',subjDir,blockFiles{b}));
+    for b = 2:length(blockFiles)
+        data = load(blockFiles{b});
         targID = data.targID;
         rspKey = data.rspKey;
         cndList = data.cndList;
         catchIdx = data.catchIdx;
         all = 1:length(targID);
-        nonCatchIdx = setdiff(all,catchIdx); % SHOULD BE 144 TRIALS ALWAYS 
+        nonCatchIdx = setdiff(all,catchIdx); % LENGTH = 96 TRIALS 
         
         actualTargID = targID(nonCatchIdx);
         actualRspKey = rspKey(nonCatchIdx);
         cndList = cndList(nonCatchIdx);
-        noCrwd_idx = find(cndList == 5 | cndList == 6 | cndList == 7 | cndList == 8); % should be 48 pre-correction
-        crwd_idx = find(cndList == 1 | cndList == 2 | cndList == 3 | cndList == 4 ...
-             | cndList == 9 | cndList == 10 | cndList == 11 | cndList == 12); % should be 96 pre-correction
+        NC_idx = find(cndList == 5 | cndList == 6 | cndList == 7 | cndList == 8); % length = 48 / non crowd
+        C_idx = find(cndList == 1 | cndList == 2 | cndList == 3 | cndList == 4 ...
+             | cndList == 9 | cndList == 10 | cndList == 11 | cndList == 12); % length = 48 / crowd
         
-        x = actualTargID(noCrwd_idx);
-        y = actualRspKey(noCrwd_idx);
-        z = actualTargID(crwd_idx);
-        a = actualRspKey(crwd_idx);
+        x = actualTargID(NC_idx);
+        y = actualRspKey(NC_idx);
+        z = actualTargID(C_idx);
+        a = actualRspKey(C_idx);
         
-        noCrwdTargID = cat(2,noCrwdTargID,x);
-        noCrwdRspKey = cat(2,noCrwdRspKey,y);
-        crwdTargID = cat(2,crwdTargID,z);
-        crwdRspKey = cat(2,crwdRspKey,a);
+        if ~data.grasping
+            NC_TargID_key = cat(2,NC_TargID_key,x);
+            NC_RspKey_key = cat(2,NC_RspKey_key,y);
+            C_TargID_key = cat(2,C_TargID_key,z);
+            C_RspKey_key = cat(2,C_RspKey_key,a);
+        else
+            NC_TargID = cat(2,NC_TargID,x);
+            NC_RspKey = cat(2,NC_RspKey,y);
+            C_TargID = cat(2,C_TargID,z);
+            C_RspKey = cat(2,C_RspKey,a);
+        end
     end
+    
+    yes = sum(NC_TargID); % should always be 48
+    no = length(NC_TargID) - sum(NC_TargID); 
     
     % FOR NO CROWDING CONDITIONS
+    % KEYPRESS ONLY
+    NC_hit_key = 0; NC_miss_key = 0; NC_falseAlarm_key = 0; NC_corReject_key = 0;
+    for i = 1:length(NC_TargID_key)
+        if NC_TargID_key(i) && NC_RspKey_key(i)
+            NC_hit_key = NC_hit_key + 1;
+        elseif NC_TargID_key(i) && ~NC_RspKey_key(i)
+            NC_miss_key = NC_miss_key + 1;
+        elseif ~NC_TargID_key(i) && NC_RspKey_key(i)
+            NC_falseAlarm_key = NC_falseAlarm_key + 1;
+        elseif ~NC_TargID_key(i) && ~NC_RspKey_key(i)
+            NC_corReject_key = NC_corReject_key + 1;
+        end
+    end
+    
+    % GRASP
     NC_hit = 0; NC_miss = 0; NC_falseAlarm = 0; NC_corReject = 0;
-    for i = 1:length(noCrwdTargID)
-        if noCrwdTargID(i) && noCrwdRspKey(i)
+    for i = 1:length(NC_TargID)
+        if NC_TargID(i) && NC_RspKey(i)
             NC_hit = NC_hit + 1;
-        elseif noCrwdTargID(i) && ~noCrwdRspKey(i)
+        elseif NC_TargID(i) && ~NC_RspKey(i)
             NC_miss = NC_miss + 1;
-        elseif ~noCrwdTargID(i) && noCrwdRspKey(i)
+        elseif ~NC_TargID(i) && NC_RspKey(i)
             NC_falseAlarm = NC_falseAlarm + 1;
-        elseif ~noCrwdTargID(i) && ~noCrwdRspKey(i)
+        elseif ~NC_TargID(i) && ~NC_RspKey(i)
             NC_corReject = NC_corReject + 1;
         end
+    end    
+       
+    NC_H_key(s) = NC_hit_key/yes;
+    NC_F_key(s) = NC_falseAlarm_key/no;
+    if ~NC_F_key(s)
+        NC_F_key(s) = 0.01;
     end
+    NC_dp_key(s) = norminv(NC_H_key(s)) - norminv(NC_F_key(s));
     
-    NC_yes(s) = sum(noCrwdTargID); % shoudl always be 144 / need to fix catch trial randomization
-    NC_no(s) = length(noCrwdTargID) - sum(noCrwdTargID); 
-    NC_H(s) = NC_hit/NC_yes(s);
-    NC_F(s) = NC_falseAlarm/NC_no(s);
+    NC_H(s) = NC_hit/yes;
+    NC_F(s) = NC_falseAlarm/no;
+    if ~NC_F(s)
+        NC_F(s) = 0.01;
+    end
     NC_dp(s) = norminv(NC_H(s)) - norminv(NC_F(s));
-    NC_c = -0.5*(norminv(NC_H)+ norminv(NC_F));
-    
+  
     % FOR CROWDING CONDITIONS
-    C_hit = 0; C_miss = 0; C_falseAlarm = 0; C_corReject = 0;
-    for i = 1:length(crwdTargID)
-        if crwdTargID(i) && crwdRspKey(i)
-            C_hit = C_hit + 1;
-        elseif crwdTargID(i) && ~crwdRspKey(i)
-            C_miss = C_miss + 1;
-        elseif ~crwdTargID(i) && crwdRspKey(i)
-            C_falseAlarm = C_falseAlarm + 1;
-        elseif ~crwdTargID(i) && ~crwdRspKey(i)
-            C_corReject = C_corReject + 1;
+    % KEYPRESS ONLY
+    C_hit_key = 0; C_miss_key = 0; C_falseAlarm_key = 0; C_corReject_key = 0;
+    for i = 1:length(C_TargID_key)
+        if C_TargID_key(i) && C_RspKey_key(i)
+            C_hit_key = C_hit_key + 1;
+        elseif C_TargID_key(i) && ~C_RspKey_key(i)
+            C_miss_key = C_miss_key + 1;
+        elseif ~C_TargID_key(i) && C_RspKey_key(i)
+            C_falseAlarm_key = C_falseAlarm_key + 1;
+        elseif ~C_TargID_key(i) && ~C_RspKey_key(i)
+            C_corReject_key = C_corReject_key + 1;
         end
     end
     
-    C_yes(s) = sum(crwdTargID); % shoudl always be 144 / need to fix catch trial randomization
-    C_no(s) = length(crwdTargID) - sum(crwdTargID); 
-    C_H(s) = C_hit/C_yes(s);
-    C_F(s) = C_falseAlarm/C_no(s);
+    % GRASP
+    C_hit = 0; C_miss = 0; C_falseAlarm = 0; C_corReject = 0;
+    for i = 1:length(C_TargID)
+        if C_TargID(i) && C_RspKey(i)
+            C_hit = C_hit + 1;
+        elseif C_TargID(i) && ~C_RspKey(i)
+            C_miss = C_miss + 1;
+        elseif ~C_TargID(i) && C_RspKey(i)
+            C_falseAlarm = C_falseAlarm + 1;
+        elseif ~C_TargID(i) && ~C_RspKey(i)
+            C_corReject = C_corReject + 1;
+        end
+    end   
+    
+    C_H_key(s) = C_hit_key/yes;
+    C_F_key(s) = C_falseAlarm_key/no;
+    C_dp_key(s) = norminv(C_H_key(s)) - norminv(C_F_key(s));
+    
+    C_H(s) = C_hit/yes;
+    C_F(s) = C_falseAlarm/no;
     C_dp(s) = norminv(C_H(s)) - norminv(C_F(s));
-    C_c = -0.5*(norminv(C_H)+ norminv(C_F));
     
 end
 
@@ -124,13 +180,35 @@ xlabel('Crowding condition')
 ylabel('Avg threshold (deg)')
 ylim([0 10])
 
-%% PLOT D PRIMES
+%% PLOT D PRIMES / WITH GRASP
+cndNames = {'NC, key','NC, grasp','C, key','C, grasp'};
+gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
+    'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
+
+figure
+h = bar([NC_dp_key; NC_dp; C_dp_key; C_dp]); 
+h(1).FaceColor = [135,205,215]/255;
+% h(2).FaceColor = [240,59,37]/255;
+% h(3).FaceColor = [250,185,219]/255;
+% h(4).FaceColor = [28 15 142]/255;
+% h(5).FaceColor = [255 255 255]/255;
+% h(6).FaceColor = [0 0 0]/255;
+legend({'BH'},'AutoUpdate','off','location','northeast');
+
+set(gca,gcaOpts{:})
+title('D-prime values')
+xlabel('Condition')
+ylabel('D-prime')
+ylim([0 4])
+
+
+%% PLOT D PRIMES / NO GRASP
 cndNames = {'No crowding','Crowding'};
 gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
 
 figure
-h = bar([NC_dp, mean(NC_dp); C_dp, mean(C_dp)]); 
+h = bar([NC_dp_key, mean(NC_dp_key); C_dp_key, mean(C_dp_key)]); 
 h(1).FaceColor = [135,205,215]/255;
 h(2).FaceColor = [240,59,37]/255;
 h(3).FaceColor = [250,185,219]/255;

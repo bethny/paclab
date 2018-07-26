@@ -21,10 +21,13 @@
 % 12 Bethany
 % 13 Amos
 
-% SUBJECTS, NEW
+% SUBJECTS, NEW (MAIN EXPERIMENT)
 % 1 Bethany
+% 2 Dan
+% 3 Will
 
 try
+    clear all
     clear all
     VIEWING_DISTANCE_CM = 52;
     MONITOR_WIDTH_CM = 44;
@@ -46,9 +49,8 @@ try
             fprintf('This subject already exists.\n');
         end
         cd(pathdata);
-        filenameTxt = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.txt');
-        filenameMat = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold.mat');
-        filenameMatAll = strcat(pathdata,filesep,sprintf('%dblock%d',subjNum,blockNum),'_threshold_all.mat');
+        filenameMat = strcat(pathdata,num2str(subjNum),'_threshold.mat');
+        filenameMatAll = strcat(pathdata,num2str(subjNum),'_threshold_all.mat');
     end
     
     %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

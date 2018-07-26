@@ -18,16 +18,20 @@
 % 11 same / horiz / + flankers
 % 12 diff / horiz / + flankers
 
-% SUBJECTS
+% SUBJECTS 
+% PILOT NO GRASP
 % 1 Bethany
 % 2 Jianfei
 % 3 Dan
 % 4 Bethany
 % 5 Sydney
-% 6 
-% 7 
-% 8 
-% 9
+
+% MAIN EXP
+% 1 Bethany / 1.5x thresh, key grasp grasp key
+% 2 Dan / 1.25x thresh?, grasp key key grasp
+% 3 Will / key grasp grasp key
+% 4 Bethany / grasp key key grasp
+% 5 Ryan / key grasp grasp key
 
 try
     clear all
@@ -43,8 +47,9 @@ try
     blockNum = input('\n Enter block number: ');
     resume = input('\n Resume a crashed experiment? (0 = no, 1 = yes): ');
     grasping = input('\n No-action (0) or grasp (1): ');
-    task = {'noAction','grasp'};
+    task = {'key','grp'};
    
+%     oripath = '/Users/bethanyhung/code/pac/paclab';
     oripath = 'C:\Documents and Settings\js21\My Documents\MATLAB\Bethany';
     addpath(genpath(oripath));
     cd(oripath);
@@ -75,7 +80,7 @@ try
     end
     
     % get threshold info
-    data = load(sprintf('%s%dblock1_threshold_all.mat',pathdata,subjNum));
+    data = load(sprintf('%s%d_threshold_all.mat',pathdata,subjNum));
     thresholds = data.thresholds;
     
     %% open window %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -83,6 +88,7 @@ try
     white = WhiteIndex(WhichScreen);
     grey = GrayIndex(WhichScreen);
     
+%     Screen('Preference', 'SkipSyncTests', 1);
     [w, winRect] = Screen('OpenWindow',WhichScreen,128);
     MyCLUT = load('C:\Documents and Settings\js21\My Documents\MATLAB\Bethany\gammaTable1.mat');
     Screen('LoadNormalizedGammaTable', w, MyCLUT.gammaTable1*[1 1 1]);
@@ -164,7 +170,7 @@ try
     markerWaitList = [0.75, 1, 1.25];
     mn = 3; % the number of markerWait;
     
-    threshMultiplier = 1.5;
+    threshMultiplier = 1.25;
     
     T1 = .1; 
     ISI = .3;
@@ -343,9 +349,7 @@ try
         if grasping
             % Loop to ensure they stay at the marker for however long "markerWait" is
             while (toc(fixTime) < markerWait(trials)-secPerFrame)
-                %clear curr_xyz curr_frame;
                 clear data;
-                %[curr_xyz1,curr_frame1] = tracker(5,160,1);   
                 data = tracker2(5,160); 
                     if (abs(marker_pos1(1) - data(3,1)) > marker_dist_threshold ||...
                         abs(marker_pos1(2) - data(4,1)) > marker_dist_threshold ||...
@@ -388,8 +392,6 @@ try
                 %'IN WHILE LOOP'
                 % Read the tracker
                 clear data;
-                %clear curr_xyz curr_frame;
-                %[curr_xyz1,curr_frame1] = tracker(5,160,1);
                 data = tracker2(5,160);
 
                 % If it's a new sample...
@@ -397,15 +399,13 @@ try
                     %re-define the old frame as current frame
                     old_frame=data(2,1); 
                     %'IN IF STATEMENT!'
-                    %Store reach data in the variables
-                    % get x and y position of hand in pixel space, and get distance
-                    % to screen for real-time feedback
+                    % Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance to screen for real-time feedback
                     xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
                     xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
                     curr_pixel_xy1 = [xy1(:,1)];
                     curr_pixel_xy2 = [xy2(:,1)];
                     screen_y_dist1 = norm(data(4,1)-screen_y1);
-                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
                     % how much time since stimulus onset?
                     SOT_data = [SOT_data;toc(S1_onset)];
                     % x and y hand positions in pixel space
@@ -420,8 +420,7 @@ try
                     currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
                     currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
                     currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
-                    % What is the current "frame" number (frame meaning number in
-                    % sequence of samples recorded by tracker)
+                    % What is the current "frame" number (frame meaning number in sequence of samples recorded by tracker)
                     currFrame_data = [currFrame_data;data(2,1)];
                 end
             end
@@ -438,8 +437,6 @@ try
                 %'IN WHILE LOOP'
                 % Read the tracker
                 clear data;
-                %clear curr_xyz curr_frame;
-                %[curr_xyz1,curr_frame1] = tracker(5,160,1);
                 data = tracker2(5,160);
 
                 % If it's a new sample...
@@ -447,15 +444,13 @@ try
                     %re-define the old frame as current frame
                     old_frame=data(2,1); 
                     %'IN IF STATEMENT!'
-                    %Store reach data in the variables
-                    % get x and y position of hand in pixel space, and get distance
-                    % to screen for real-time feedback
+                    % Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance to screen for real-time feedback
                     xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
                     xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
                     curr_pixel_xy1 = [xy1(:,1)];
                     curr_pixel_xy2 = [xy2(:,1)];
                     screen_y_dist1 = norm(data(4,1)-screen_y1);
-                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
                     % how much time since stimulus onset?
                     SOT_data = [SOT_data;toc(S1_onset)];
                     % x and y hand positions in pixel space
@@ -489,8 +484,6 @@ try
                 %'IN WHILE LOOP'
                 % Read the tracker
                 clear data;
-                %clear curr_xyz curr_frame;
-                %[curr_xyz1,curr_frame1] = tracker(5,160,1);
                 data = tracker2(5,160);
 
                 % If it's a new sample...
@@ -498,7 +491,7 @@ try
                     %re-define the old frame as current frame
                     old_frame=data(2,1);
                     %'IN IF STATEMENT!'
-                    %Store reach data in the variables
+                    % Store reach data in the variables
                     % get x and y position of hand in pixel space, and get distance
                     % to screen for real-time feedback
                     xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
@@ -506,7 +499,6 @@ try
                     curr_pixel_xy1 = [xy1(:,1)];
                     curr_pixel_xy2 = [xy2(:,1)];
                     screen_y_dist1 = norm(data(4,1)-screen_y1);
-                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
                     % how much time since stimulus onset?
                     SOT_data = [SOT_data;toc(S1_onset)];
                     % x and y hand positions in pixel space
@@ -574,15 +566,13 @@ try
                     %re-define the old frame as current frame
                     old_frame=data(2,1);
                     %'IN IF STATEMENT!'
-                    %Store reach data in the variables
-                    % get x and y position of hand in pixel space, and get distance
-                    % to screen for real-time feedback
+                    % Store reach data in the variables
+                    % get x and y position of hand in pixel space, and get distance to screen for real-time feedback
                     xy1 = bsxfun(@plus,affine_alignment1(:,3),affine_alignment1(:,1:2)*[data(3,1);data(5,1)]);
                     xy2 = bsxfun(@plus,affine_alignment2(:,3),affine_alignment2(:,1:2)*[data(3,2);data(5,2)]);
                     curr_pixel_xy1 = [xy1(:,1)];
                     curr_pixel_xy2 = [xy2(:,1)];
                     screen_y_dist1(trials) = norm(data(4,1)-screen_y1);
-                    %screen_y_dist2 = norm(data(4,2)-screen_y2);
                     % how much time since stimulus onset?
                     SOT_data = [SOT_data;toc(S1_onset)];
                     % x and y hand positions in pixel space
@@ -605,8 +595,7 @@ try
                     % within range of a stimulus, end trial and say where they
                     % reached, record time elapsed, and set exit to 1 to exit the
                     % hand recording loop
-                    %'Screen touched?'
-                    cc = screen_y_dist1(trials) < screen_y_dist_threshold;
+                    % 'Screen touched?'
                     if screen_y_dist1(trials) < screen_y_dist_threshold && ~exit
                         fprintf(sprintf('Trial %d: Screen touched!\n',trials))
                         %'Screen touched!'
@@ -616,7 +605,6 @@ try
                                 && abs(xy2(2)-pos_2(2))<target_y_dist_threshold)
                             reachedTo = 1;
                             fprintf(sprintf('Trial %d: Screen touched & correct grasp!\n',trials))
-%                             Beeper(1500,.9,.5); % super high beep
                             acc_grasp(trials) = 1; 
                             timeElapsed = toc(S1_onset);
                         else
@@ -644,7 +632,7 @@ try
                 reachTime = 0;
                 acc_grasp(trials) = 0;
             end
-             % mark the time when the end loop begins
+            % mark the time when the end loop begins
             trialLoopEnd = tic;
             % Record movement for an extra "extraMeasurementTime" seconds to get velocity profiles
             while (toc(trialLoopEnd) < extraMeasurementTime)
