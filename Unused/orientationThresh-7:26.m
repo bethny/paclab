@@ -25,7 +25,6 @@
 % 1 Bethany
 % 2 Dan
 % 3 Will
-% 4 Ryan
 
 try
     clear all
@@ -171,12 +170,14 @@ try
     % initialize stuff for feedback
     stimulus_onset_time(1:nTotalTrials) = zeros;
     r1(1:nTotalTrials) = zeros;
-    acc(1:nTotalTrials,1:nStaircase) = zeros;
+    acc(1:nTotalTrials,1:2) = zeros;
+    acc2(1:nTotalTrials,1:nStaircase) = zeros;
     rt(1:nTotalTrials,1:2) = zeros;
     Keyresponse(1:nTotalTrials,1:2) = zeros;
     stairOrder(1:nTotalTrials) = zeros;
     crowd(1:nTotalTrials) = zeros; 
     rspKey = zeros(1,nTotalTrials);
+    rspRatio = [0 0]; % rspRatio(1) counts # lefts, rspRatio(2) counts # rights
     
     %% instructions
     
@@ -294,14 +295,18 @@ try
                     ShowCursor;
                 end
                 if responseKey(KbName('1'))
+                    rspRatio(1) = rspRatio(1) + 1;
                     rspKey(trials) = 0;
                 elseif responseKey(KbName('2'))
+                    rspRatio(2) = rspRatio(2) + 1;
                     rspKey(trials) = 1;
                 end
                 if (oriIndex(trials) == -1 && responseKey(KbName('1'))) || (oriIndex(trials) == 1 && responseKey(KbName('2')))
-                    acc(trials,WhichStair) = 1;
+                    acc(trial(WhichStair),WhichStair) = 1;
+                    acc2(trials,WhichStair) = 1;
                 else
-                    acc(trials,WhichStair) = 0;
+                    acc(trial(WhichStair),WhichStair) = 0;
+                    acc2(trials,WhichStair) = 0;
                 end
                 rt(trial(WhichStair),WhichStair) = (secs-stimulus_onset_time(trials));
                 Keyresponse(trial(WhichStair),WhichStair) = find(responseKey);
@@ -312,7 +317,7 @@ try
         
         %staircase stuff
 %         if acc(trial(WhichStair),WhichStair) % IF CORRECT
-        if acc(trials,WhichStair)
+        if acc2(trials,WhichStair)
             Beeper(1000); %play high beep for correct answer
             if hemiIndex(trials) > 0
                 stairCorrect(WhichStair) = stairCorrect(WhichStair) + 1;
@@ -386,8 +391,8 @@ try
         if (sum(nReverse > 8) == nStaircase) || (sum(realTrial > 100) > 0)
             flag = 1;
         else
-            if trials == 100 || trials == 200 || trials == 300
-                breakText = 'Please take a break! Press 1 when ready to resume.\n';
+            if trials == 200 || trials == 400 || trials == 600
+                breakText = 'Please take a break! Press RIGHT ARROW key when ready to resume.\n';
                 DrawFormattedText(w, breakText, 'Center', 'Center', [255 255 255]);
                 Screen('Flip',w);
                 WaitSecs(2); 
@@ -403,6 +408,13 @@ try
     %--------- DONE --------------------
     % rudimentary data analysis
     if blockNum
+        % sum stimulus values at each reversal for separate staircases
+%         sumReversal(1) = sum(stimulusReversal(1,4:nReverse(1)));
+%         sumReversal(2) = sum(stimulusReversal(2,4:nReverse(2)));
+%         
+%         % means
+%         stair1mean = sumReversal(1)/(nReverse(1)-3);
+%         stair2mean = sumReversal(2)/(nReverse(2)-3);
 %         
 %         % standard deviation
 %         StandardDev1 = std(stimulusReversal(1,4:nReverse(1)));
@@ -412,14 +424,17 @@ try
             final6Rev(:,i) = stimulusReversal(i,nReverse(i)-5:nReverse(i));
         end
         avg1 = mean(final6Rev,1);
-        standardDev = std(final6Rev,1);
         thresholds = [mean(avg1(1:2)) mean(avg1(3:4))];
         
         ListenChar(1); % Turn keyboard output to command window on
-       
+        
+        dlmwrite(filenameTxt,[WhichStair,trial(WhichStair),stori,r1(trials),acc(trial(WhichStair),WhichStair),...
+            stdir,stairCorrect(WhichStair),nReverse(WhichStair),hemiIndex(trials),rspKey(trials),...
+            flankerIndex(trials)],'-append','roffset', [],'delimiter', '\t');
+        save(filenameTxt);
         save(filenameMatAll);
-        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','hemiIndex','rspKey',...
-            'flankerIndex','stairOrder','realTrial','idxCatchTrials','thresholds','avg1','standardDev');
+        save(filenameMat,'trials','trial','r1','acc','nReverse','stimulusReversal','rspRatio','hemiIndex','rspKey',...
+            'flankerIndex','stairOrder','realTrial','idxCatchTrials','thresholds');
         
         for i = 1:nStaircase
             plot(stimulusReversal(i,1:nReverse(i)));hold on;

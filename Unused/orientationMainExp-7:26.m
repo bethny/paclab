@@ -1,6 +1,8 @@
 %Makes a double staircase for bar orientation discrimination (one starts
-% Takes orientation sensitivity thresholds and measures how grasping
-% affects orientation sensitivity
+%at 0 degree difference, the other 10 degree) and after 10 reversals,
+%should show us the threshold of accurate orientation discrimination.
+%3 down 1 up double staircase, estimate accuracy .792, d' = 1.634
+% written by Jianfei, Fall 2015 / modified by Bethany, Summer 2018
 
 % CONDITIONS
 % 1	same / vert / - flankers
@@ -25,12 +27,11 @@
 % 5 Sydney
 
 % MAIN EXP
-% A = key, B = grasp
-
-% 1 Bethany / 1.5x thresh, ABBA
-% 2 Dan / 1.25x thresh?, BAAB
-% 3 Will / ABBA
-% 4 Ryan / changed requirements for correct grasp, ABBAABBA
+% 1 Bethany / 1.5x thresh, key grasp grasp key
+% 2 Dan / 1.25x thresh?, grasp key key grasp
+% 3 Will / key grasp grasp key
+% 4 Bethany / grasp key key grasp
+% 5 Ryan / key grasp grasp key
 
 try
     clear all
@@ -118,11 +119,9 @@ try
     target_x_dist_threshold = extraSpace*1.5;
     target_y_dist_threshold = extraSpace*2.5;
     
-    angleThreshold = 15; % maximum tilt between index/thumb is 15 deg
-    
     %% experiment settings
     
-    nTrialPerCnd = 24/4; % 24 total over 4 blocks, 6 per block
+    nTrialPerCnd = 24/2; % 24 total over 2 blocks, 12 per block
     nBaseOri = 2; % 0/90
     nTarg = 2; % same/diff
     nCrowding = 2; % actual num of crowding conditions; 12 cnd total but 8 who get 12 each
@@ -229,8 +228,6 @@ try
         rt(1:nTotalTrials) = zeros;
         Keyresponse(1:nTotalTrials) = zeros;
         rspKey = zeros(1,nTotalTrials);
-        angleGraspInitial = zeros(1,nTotalTrials);
-        angleGraspFinal = zeros(1,nTotalTrials);
     end
     
     %% instructions 
@@ -240,28 +237,14 @@ try
     
     %Practice Instructions
     if blockNum == 0 
-        if grasping
-            instText = ['Fixate on the center dot during the entire trial.\n'...
-            'You will see 2 stimuli, presented in succession.\n'...
-            'If you see one bar, compare the single bar. If you see\n'...
-            'multiple, compare the center bars.\n\n'...
-            'Press 1 if the two stimuli are the same, 2 if different.\n\n'...
-            'You will grasp the 2nd stimulus after it disappears.\n\n'...
-            'You will hear a high beep for correct response and low for incorrect.\n'...
+        instText = ['Fixate on the center dot during the entire trial.\n'...
+            'Press 1 if the two stimuli are the same.\n'...
+            'Press 2 if they are different.\n'...
+            'If you respond correctly, you will hear a beep. \n'...
+            'If you respond incorrectly, you will hear a lower beep. \n\n'...  
             'If you need to exit the trial, press q. \n\n'...
             'We will start with some practice trials. \n\n'...
             'Press ENTER to continue.'];
-        else
-            instText = ['Fixate on the center dot during the entire trial.\n'...
-            'You will see 2 stimuli, presented in succession.\n'...
-            'If you see one bar, compare the single bar. If you see\n'...
-            'multiple, compare the center bars.\n\n'...
-            'Press 1 if the two stimuli are the same, 2 if different.\n\n'...
-            'You will hear a high beep for correct response and low for incorrect.\n'...
-            'If you need to exit the trial, press q. \n\n'...
-            'We will start with some practice trials. \n\n'...
-            'Press ENTER to continue.'];
-        end
     elseif blockNum == 1
         instText = ['The practice block is now complete.\n\n'...
                     'There will be a number of experimental blocks with breaks in between.\n\n'...   
@@ -372,7 +355,7 @@ try
                         markerTime = tic;
                     end       
             end 
-            old_frame = data(2,1);
+            old_frame=data(2,1);
         else
             WaitSecs(markerWait(trials));
         end
@@ -480,7 +463,8 @@ try
                     currXYZ2_data1 = [currXYZ2_data1;data(3,2)];
                     currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
                     currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
-                    % What is the current "frame" number (frame meaning number in sequence of samples recorded by tracker)
+                    % What is the current "frame" number (frame meaning number in
+                    % sequence of samples recorded by tracker)
                     currFrame_data = [currFrame_data;data(2,1)];
                 end
             end    
@@ -588,7 +572,7 @@ try
                     curr_pixel_xy2 = [xy2(:,1)];
                     screen_y_dist1(trials) = norm(data(4,1)-screen_y1);
                     % how much time since stimulus onset?
-                    SOT_data(trials,:) = [SOT_data;toc(S1_onset)];
+                    SOT_data = [SOT_data;toc(S1_onset)];
                     % x and y hand positions in pixel space
                     xy1_data1 = [xy1_data1;xy1(1)];
                     xy1_data2 = [xy1_data2;xy1(2)];
@@ -612,30 +596,19 @@ try
                     % 'Screen touched?'
                     if screen_y_dist1(trials) < screen_y_dist_threshold && ~exit
                         fprintf(sprintf('Trial %d: Screen touched!\n',trials))
-                        timeElapsed(trials) = toc(S1_onset);
                         %'Screen touched!'
                         reachedTo = 4;
-                        radius = sqrt((xy2(1)-xy1(1))^2 + (xy2(2)-xy1(2))^2); % distance between two fingers
-                        x_dist = xy2(1) - xy1(1); % x dist between two trackers 
-                        angle = abs(rad2deg(asin(x_dist/radius))); % angle between two fingers
-                        if baseOri(trials) % IF HORIZONTAL
-                            angle = 90 - angle;
-                        end
-                        
-                        if angle < angleThreshold     
-%                         if (abs(xy1(1)-pos_1(1))<target_x_dist_threshold && abs(xy1(2)-pos_1(2))...
-%                                 <target_y_dist_threshold) && (abs(xy2(1)-pos_2(1))<target_x_dist_threshold ...
-%                                 && abs(xy2(2)-pos_2(2))<target_y_dist_threshold)
+                        if (abs(xy1(1)-pos_1(1))<target_x_dist_threshold && abs(xy1(2)-pos_1(2))...
+                                <target_y_dist_threshold) && (abs(xy2(1)-pos_2(1))<target_x_dist_threshold ...
+                                && abs(xy2(2)-pos_2(2))<target_y_dist_threshold)
                             reachedTo = 1;
                             fprintf(sprintf('Trial %d: Screen touched & correct grasp!\n',trials))
                             acc_grasp(trials) = 1; 
-%                           timeElapsed(trials) = toc(S1_onset);                            
+                            timeElapsed = toc(S1_onset);
                         else
                             fprintf(sprintf('Trial %d: Screen touched & incorrect grasp!\n',trials))
                         end
-                        angleGraspInitial(trials) = angle;
-                        
-                        if timeElapsed(trials) > RTdeadline
+                        if timeElapsed > RTdeadline
                             Beeper(500,.9); % two low beeps if you didn't make the time limit
                             WaitSecs(.3);
                             Beeper(500,.9);
@@ -653,7 +626,7 @@ try
                 Beeper(500,.9);
                 WaitSecs(.3);
                 Beeper(500,.9);
-                timeElapsed(trials) = 0;
+                timeElapsed = 0;
                 reachTime = 0;
                 acc_grasp(trials) = 0;
             end
@@ -683,14 +656,7 @@ try
                     currXYZ2_data2 = [currXYZ2_data2;data(5,2)];
                     currXYZ2_data3 = [currXYZ2_data3;data(4,2)];
                     currFrame_data = [currFrame_data;data(2,1)];
-                    
-                    radius = sqrt((xy2(1)-xy1(1))^2 + (xy2(2)-xy1(2))^2); % distance between two fingers
-                    x_dist = xy2(1) - xy1(1); % x dist between two trackers 
-                    angle = abs(rad2deg(asin(x_dist/radius))); % angle between two fingers
-                    if baseOri(trials) % IF HORIZONTAL
-                        angle = 90 - angle;
-                    end
-                    angleGraspFinal(trials) = angle; 
+                    % HERE 
                     grasp_width = data(3,1) - data(3,2);
                     Beeper(1000,.9);
                 end
@@ -728,18 +694,11 @@ try
         Screen('FillRect', w, grey);
         Screen('Flip',w);
         
-        for x = 1:length(SOT_data)
-            dlmwrite(strcat(pathdata,'\',subjNum,'_',num2str(blockNum),'_graspExp.txt'),...
-                [SOT_data(x),xy1_data1(x),xy1_data2(x),xy2_data1(x),xy2_data2(x),currXYZ1_data1(x),...
-                currXYZ1_data2(x),currXYZ1_data3(x),currXYZ2_data1(x),currXYZ2_data2(x),currXYZ2_data3(x),...
-                currFrame_data(x)],'-append', 'roffset', [],'delimiter', '\t');
-        end
-        
         ListenChar(0); %disables keyboard and flushes.
         ListenChar(2); %enables keyboard, no output to command window
         
         % test whether to offer a break
-        if trials == 32
+        if trials == 48 || trials == 96 || trials == 144
             breakText = 'Please take a break! Press 1 when ready to resume.\n';
             DrawFormattedText(w, breakText, 'Center', 'Center', [255 255 255]);
             Screen('Flip',w);
@@ -769,17 +728,8 @@ try
     if blockNum
         ListenChar(1); % Turn keyboard output to command window on
         save(filenameMatAll);
-        if grasping
-            save(filenameMat,'grasping','nTrialPerCnd','trialNumber','nCatch','catchIdx','nonCatchIdx'...
-                'cndList','hemiIndex','S1_onset_time','S2_onset_time','rt','acc','targID','baseOri'...
-                'angleGraspInitial','angleGraspFinal','data',...
-                'SOT_data','xy1_data1','xy1_data2','xy2_data1','xy2_data2','currXYZ1_data1',...
-                'currXYZ1_data2','currXYZ1_data3','currXYZ2_data1','currXYZ2_data2','currXYZ2_data3',...
-                'currFrame_data');
-        else
-            save(filenameMat,'grasping','nTrialPerCnd','trialNumber','nCatch','catchIdx','nonCatchIdx'...
-                'cndList','hemiIndex','S1_onset_time','S2_onset_time','rt','acc','targID','baseOri');
-        end
+        save(filenameMat,'trials','acc','hemiIndex','rspKey','cndList','targTilt','baseOri',...
+            'flanker','targAngle','targID');
     end
     cd(oripath);
    
