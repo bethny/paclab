@@ -24,40 +24,36 @@
 clear all
 close all
 
-analysis = 1; % 0 if thresh, 1 if main exp
-dataset = 3; % only valid if thresh
+dataset = 2; % only valid if thresh
 
 % parentDir = '~/Bethany/paclab';
 parentDir = '~/code/pac/paclab';
 addpath(genpath(parentDir));
 dataDir = sprintf('%s/Subject_folders',parentDir);
 
-if ~analysis
-    dataDir = sprintf('%s/Pilot',dataDir);
-    subj = sort(strsplit(ls(dataDir)));
-    subj = subj(5:end); % ALL SUBJ
-    if dataset == 1
-        subj = subj(2:5); % NO BASELINE
-        idx = 18;
-    elseif dataset == 2
-        subj = subj(6:9); % WITH BASELINE
-        idx = 18;
-    elseif dataset == 3
-        subj = subj(10:end); % WITH BASELINE, NOISE MASK
-        idx = 19;
-    end
+dataDir = sprintf('%s/Pilot',dataDir);
+subj = sort(strsplit(ls(dataDir)));
+subj = subj(2:end); % ALL SUBJ
+if dataset == 1
+    subj = subj(2:5); % NO BASELINE
+    idx = 18;
+elseif dataset == 2
+    subj = subj(6:9); % WITH BASELINE
+    idx = 18;
+elseif dataset == 3
+    subj = subj(10:end); % WITH BASELINE, NOISE MASK
+    idx = 19;
 else
-    subj = sort(strsplit(ls(dataDir)));
-    subj = subj(6:end);
+    idx = 3;
 end
 
-%%
 for s = 1:length(subj)
     curSubj = subj{s};
     subjNum = str2num(curSubj(2:3));
     data = load(sprintf('%s/%s/%dblock1_threshold_all.mat',dataDir,curSubj,subjNum));
+%     data = load(sprintf('%s/%s/%d_threshold_all.mat',dataDir,curSubj,subjNum));
     
-    if dataset == 3
+    if dataset == 3 || ~dataset
         nStaircase = data.nStaircase;
     else
         nStaircase = 8;
@@ -65,11 +61,11 @@ for s = 1:length(subj)
     
     stimRev = data.stimulusReversal;   
     nReverse(s,:) = data.nReverse;
-%     if idx == 18
-%         trialsPerStair = data.trial;
-%     else
+    if idx == 18
+        trialsPerStair = data.trial;
+    else
         trialsPerStair = data.realTrial;
-%     end
+    end
     acc = data.acc;
     acc = acc(1:max(trialsPerStair),:); % already split up by staircase
     
@@ -82,8 +78,8 @@ for s = 1:length(subj)
         StandardDev(s,i) = std(stimRev(i,4:nReverse(s,i)));
     end
     
-    rspRatio = data.rspRatio;
-    percRight(s) = rspRatio(2)/sum(rspRatio);
+%     rspRatio = data.rspRatio;
+%     percRight(s) = rspRatio(2)/sum(rspRatio);
     
     % BIAS ANALYSIS SETUP %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     trials = data.trials;
@@ -224,7 +220,7 @@ gcaOpts = {'XTick',1:4,'XTickLabel',cndNames,'box',...
 
 % REORGANIZING & COLLAPSING DATA
 
-if dataset == 3
+if dataset == 3 || ~dataset
     sepCrwd = [mean(finalRev(:,1:2),2), mean(finalRev(:,3:4),2)];
     for i = 1:size(final6Rev,3)
         curNC = final6Rev(:,1:2,i);
@@ -288,7 +284,7 @@ h = bar(avgData');
 h(1).FaceColor = [135,205,215]/255;
 h(2).FaceColor = [240,59,37]/255;
 h(3).FaceColor = [250,185,219]/255;
-% h(4).FaceColor = [250,185,219]/255;
+h(4).FaceColor = [250,185,219]/255;
 % h(4).FaceColor = [118,187,213]/255;
 h(4).FaceColor = [28 15 142]/255;
 if dataset == 3
@@ -308,7 +304,7 @@ set(gca,gcaOpts{:})
 title('Avg of last 6 reversal values, avged over up/down staircases')
 xlabel('Crowding condition')
 ylabel('Avg threshold (deg)')
-ylim([0 20])
+ylim([0 10])
 
 %% PLOT: LEFT-RIGHT WITHIN SUBJECT COMPARISON
 
@@ -317,7 +313,7 @@ if dataset == 1
     titleTxt = 'Left-right flanker tilt comparisons, avged over last 6 reversals';
 elseif dataset == 2
     cndNames = {'No crowding','Crowding'};
-    titleTxt = 'Left-right hemifield comparisons, avged over last 6 reversals';
+    titleTxt = 'Left?right hemifield threshold differences';
 end
 gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
     'off','tickdir','out','fontname','Helvetica','linewidth',1.5,'fontsize',14};
@@ -336,12 +332,13 @@ for i = 1:nbars
     x = (1:ngroups) - (groupwidth/2) + (2*i-1) * (groupwidth / (2*nbars));
     errorbar(x, avgDataLR(i,:), semDataLR(i,:), 'k', 'linestyle', 'none');
 end
-legend(subj,'AutoUpdate','off','location','southeast');
+% legend(subj,'AutoUpdate','off','location','southeast');
+legend({'S01','S02','S03','S04'},'AutoUpdate','off','location','southeast');
 set(gca,gcaOpts{:})
 title(titleTxt)
-xlabel('Condition/Staircase')
-ylabel('Threshold difference')
-ylim([-10 10])
+xlabel('Condition')
+ylabel('Threshold difference (degrees)')
+ylim([-8 4])
 
 %% OLD PLOTS W/O U/D AVERAGING
 

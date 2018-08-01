@@ -155,6 +155,15 @@ try
         baseOriList = [0 90];
         flankerList = [-1 0 1];
         cnds = CombVec(targList,baseOriList,flankerList);
+        
+        hemiIndex = ones(1, nTotalTrials);
+        hemiIndex(catchIdx) = -1;
+
+        nDiffTrials = sum(mod(cndList,2));
+        targTiltList = [-1 1];
+        targTiltIdx = repmat(targTiltList,1,nDiffTrials/2);
+        n = randperm(nDiffTrials);
+        targTiltIdx = targTiltIdx(n); % only 64 bc only 1/2 of the total trials are diff, which involve tilt
     end
     
     %% initial value & stimulus settings
@@ -178,17 +187,6 @@ try
     T2 = .1;
     RTdeadline = 10;
     extraMeasurementTime = .2; 
-  
-    if ~resume
-        hemiIndex = ones(1, nTotalTrials);
-        hemiIndex(catchIdx) = -1;
-
-        nDiffTrials = sum(mod(cndList,2));
-        targTiltList = [-1 1];
-        targTiltIdx = repmat(targTiltList,1,nDiffTrials/2);
-        n = randperm(nDiffTrials);
-        targTiltIdx = targTiltIdx(n); % only 64 bc only 1/2 of the total trials are diff, which involve tilt
-    end
     
     fixRadPx = round(fixRad*ppd);
     FIXATION_POSITION = [xCen - fixRadPx, yCen - fixRadPx, xCen + fixRadPx, yCen + fixRadPx];
