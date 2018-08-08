@@ -241,6 +241,162 @@ RH_C_diff = RH_C_dp_grp - RH_C_dp_key;
 LH_NC_diff = LH_NC_dp_grp - LH_NC_dp_key;
 LH_C_diff = LH_C_dp_grp - LH_C_dp_key;
 
+%% SENSITIVITY PLOT
+cndNames = {'No crowding','Crowding'};
+x1 = [1 1.75];
+% gcaOpts = {'XTick',x1,'XTickLabel',cndNames,'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
+gcaOpts = {'XTick',[],'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
+figure
+
+x = [1./mean(thresholds(:,1)) 0; 1./mean(thresholds(:,2)) 1];
+err = [std(1./thresholds(:,1))/sqrt(length(thresholds(:,1))); std(1./thresholds(:,2))/sqrt(length(thresholds(:,2)))];
+
+for i=1:length(x)
+    h = bar(x1(i),x(i,1),0.5,'EdgeColor',[0 0 0],'LineWidth',1.5);
+    if i == 1, hold on, end
+    if ~x(i,2)
+        col = [12,121,153]/255;
+    else
+        col = [240,59,37]/255;
+    end
+    set(h, 'FaceColor', col, 'FaceAlpha', 0.5)
+end
+hold on;
+ngroups = 1;
+nbars = size(x, 1);
+groupwidth = min(0.8, nbars/(nbars + 1.5));
+for i = 1:nbars
+    errorbar(x1(i), x(i), err(i), 'k','LineWidth',1.5,'linestyle', 'none');
+end
+legend(cndNames,'AutoUpdate','off','location','northeast');
+set(gca,gcaOpts{:})
+title('Orientation discrimination sensitivity')
+xlabel('Condition')
+ylabel('Sensitivity')
+ylim([0 .7])
+
+%% PLOT D PRIMES / WITH GRASP / FOR RIGHT HEMI
+cndNames = {'No crowding','Crowding'};
+xtick = [1.375 3.375];
+x1 = [1 1.75 3 3.75];
+gcaOpts = {'XTick',xtick,'XTickLabels',cndNames,'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
+
+figure
+xdata = [mean_RH_NC_key, 1, 0; 
+    mean_RH_NC_grp, 2, 1; 
+    mean_RH_C_key, 3, 2; 
+    mean_RH_C_grp, 4, 3];
+err = [std(RH_NC_dp_key)/sqrt(nSubj); std(RH_NC_dp_grp)/sqrt(nSubj); std(RH_C_dp_key)/sqrt(nSubj); std(RH_C_dp_grp)/sqrt(nSubj)];
+
+for i=1:length(xdata)
+    h = bar(x1(i),xdata(i,1),0.7,'EdgeColor',[0 0 0],'LineWidth',1.5);
+    if i == 1, hold on, end
+    if ~xdata(i,3)
+        col = [12,121,153]/255;
+        transparency = 0.5;
+    elseif xdata(i,3) == 1
+        col = [12,121,153]/255; 
+        transparency = 1;
+    elseif xdata(i,3) == 2
+        col = [240,59,37]/255;
+        transparency = 0.5;
+    else
+        col = [240,59,37]/255;
+        transparency = 1;
+    end
+    set(h, 'FaceColor', col, 'FaceAlpha',transparency)
+end
+g(1) = bar(NaN,NaN,'FaceColor', 'k', 'FaceAlpha',0.25);
+g(2) = bar(NaN,NaN,'FaceColor', 'k', 'FaceAlpha',.75);
+hold on;
+ngroups = 1;
+nbars = size(xdata, 1);
+groupwidth = min(0.8, nbars/(nbars + 1.5));
+for i = 1:nbars
+    errorbar(x1(i), xdata(i), err(i), 'k', 'LineWidth',1.5,'linestyle', 'none');
+end
+legend(g,{'Keypress-only','Grasp'},'AutoUpdate','off','location','northeast');
+
+set(gca,gcaOpts{:})
+title('Orientation sensitivity (d'')')
+xlabel('Condition')
+ylabel('d-prime')
+ylim([0 2.7])
+
+% figure
+% h = bar([RH_NC_dp_key, mean_RH_NC_key; RH_NC_dp_grp, mean_RH_NC_grp; RH_C_dp_key, mean_RH_C_key; RH_C_dp_grp, mean_RH_C_grp]); 
+% h(1).FaceColor = [135,205,215]/255;
+% h(2).FaceColor = [240,59,37]/255;
+% h(3).FaceColor = [250,185,219]/255;
+% h(4).FaceColor = [28 15 142]/255;
+% h(5).FaceColor = [255 255 255]/255;
+% % h(6).FaceColor = [0 0 0]/255;
+% legend({subj{:},'avg'},'AutoUpdate','off','location','northeast');
+% 
+% set(gca,gcaOpts{:})
+% title('Orientation sensitivity (d'')')
+% xlabel('Condition')
+% ylabel('d-prime')
+% ylim([-1 3.5])
+
+%% PLOT D PRIME COMPARISON, GRASP VS NO GRASP / RIGHT HEMI
+% cndNames = {'No crowding','Crowding'};
+% gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
+%     'off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
+% 
+% figure
+% % h = bar([RH_NC_diff, mean_RH_NC_grp-mean_RH_NC_key; RH_C_diff, mean_RH_C_grp-mean_RH_C_key]); 
+% % h(1).FaceColor = [135,205,215]/255;
+% % h(2).FaceColor = [240,59,37]/255;
+% % h(3).FaceColor = [250,185,219]/255;
+% % h(4).FaceColor = [28 15 142]/255;
+% % h(5).FaceColor = [255 255 255]/255;
+% h = bar([mean_RH_NC_grp-mean_RH_NC_key; mean_RH_C_grp-mean_RH_C_key]); 
+% h(1).FaceColor = [135,205,215]/255;
+% % h(6).FaceColor = [0 0 0]/255;
+% legend({'avg'},'AutoUpdate','off','location','northeast');
+% 
+% set(gca,gcaOpts{:})
+% title('d'' diff (grasping - key only) in RH')
+% xlabel('Condition')
+% ylabel('d'' difference')
+% ylim([-1 1])
+
+cndNames = {'NC','C'};
+x1 = [1 1.75];
+% gcaOpts = {'XTick',x1,'XTickLabel',cndNames,'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
+gcaOpts = {'XTick',[],'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
+
+figure
+x = [mean(RH_NC_dp_grp-RH_NC_dp_key) 0; mean(RH_C_dp_grp-RH_C_dp_key) 1];
+err = [std(RH_NC_dp_grp-RH_NC_dp_key)/sqrt(nSubj); std(RH_C_dp_grp-RH_C_dp_key)/sqrt(nSubj)];
+
+for i=1:length(x)
+    h = bar(x1(i),x(i,1),0.5,'EdgeColor',[0 0 0],'LineWidth',1.5);
+    if i == 1, hold on, end
+    if ~x(i,2)
+        col = [12,121,153]/255;
+    elseif x(i,2) == 1
+        col = [240,59,37]/255;
+    end
+    set(h, 'FaceColor', col, 'FaceAlpha', 0.75)
+end
+hold on;
+ngroups = 1;
+nbars = size(x, 1);
+groupwidth = min(0.8, nbars/(nbars + 1.5));
+for i = 1:nbars
+    errorbar(x1(i), x(i), err(i), 'k', 'LineWidth', 1.5, 'linestyle', 'none');
+end
+line([0 2.75],[0 0],'LineWidth',1.5,'color','k')
+legend(cndNames,'AutoUpdate','off','location','northeast');
+set(gca,gcaOpts{:})
+title('Grasp-keypress sensitivity difference')
+xlabel('Condition')
+ylabel('d'' difference')
+xlim([.25 2.5])
+ylim([-.4 1])
+
 %% PLOT GRASP ANGLE ERROR
 
 avg_NC_angle = mean(NC_angle);
@@ -314,37 +470,6 @@ title('Orientation discrimination thresholds, 80% accuracy')
 ylabel('80% threshold (degrees)')
 ylim([0 6])
 
-%% SENSITIVITY PLOT
-cndNames = {'No crowding','Crowding'};
-gcaOpts = {'XTick',[],'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
-figure
-x1 = [1 1.75];
-x = [1./mean(thresholds(:,1)) 0; 1./mean(thresholds(:,2)) 1];
-err = [std(1./thresholds(:,1))/sqrt(length(thresholds(:,1))); std(1./thresholds(:,2))/sqrt(length(thresholds(:,2)))];
-
-for i=1:length(x)
-  h = bar(x1(i),x(i,1),0.5,'EdgeColor',[0 0 0],'LineWidth',1.5);
-  if i == 1, hold on, end
-  if ~x(i,2)
-    col = [135,205,215]/255;
-  else
-    col = [255,175,161]/255;
-  end
-  set(h, 'FaceColor', col) 
-end
-hold on;
-ngroups = 1;
-nbars = size(x, 1);
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    errorbar(x1(i), x(i), err(i), 'k','LineWidth',1.5,'linestyle', 'none');
-end
-legend(cndNames,'AutoUpdate','off','location','northeast');
-set(gca,gcaOpts{:})
-title('Orientation discrimination sensitivity')
-xlabel('Condition')
-ylabel('Sensitivity')
-ylim([0 .7])
 
 %%
 
@@ -703,62 +828,7 @@ for i = 1:nSubj
     ylabel('d-prime')
 end
 
-%% PLOT D PRIMES / WITH GRASP / FOR RIGHT HEMI
-cndNames = {'NC, keypress-only','NC, grasp','C, keypress-only','C, grasp'};
-gcaOpts = {'XTick',[],'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
 
-figure
-x1 = [1 2 3.5 4.5];
-xdata = [mean_RH_NC_key, 1, 0; 
-    mean_RH_NC_grp, 2, 2; 
-    mean_RH_C_key, 3, 1; 
-    mean_RH_C_grp, 4, 3];
-err = [std(RH_NC_dp_key)/sqrt(nSubj); std(RH_NC_dp_grp)/sqrt(nSubj); std(RH_C_dp_key)/sqrt(nSubj); std(RH_C_dp_grp)/sqrt(nSubj)];
-
-for i=1:length(xdata)
-    h = bar(x1(i),xdata(i,1),0.7,'EdgeColor',[0 0 0],'LineWidth',1.5);
-    if i == 1, hold on, end
-    if ~xdata(i,3)
-        col = [135,205,215]/255;
-    elseif xdata(i,3) == 1
-        col = [255,175,161]/255;
-    elseif xdata(i,3) == 2
-        col = [29,8,220]/255;
-    else
-        col = [240,59,37]/255;
-    end
-    set(h, 'FaceColor', col)
-end
-hold on;
-ngroups = 1;
-nbars = size(xdata, 1);
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    errorbar(x1(i), xdata(i), err(i), 'k', 'LineWidth',1.5,'linestyle', 'none');
-end
-legend(cndNames,'AutoUpdate','off','location','northeast');
-
-set(gca,gcaOpts{:})
-title('Orientation sensitivity (d'')')
-xlabel('Condition')
-ylabel('d-prime')
-ylim([0 2.7])
-
-% figure
-% h = bar([RH_NC_dp_key, mean_RH_NC_key; RH_NC_dp_grp, mean_RH_NC_grp; RH_C_dp_key, mean_RH_C_key; RH_C_dp_grp, mean_RH_C_grp]); 
-% h(1).FaceColor = [135,205,215]/255;
-% h(2).FaceColor = [240,59,37]/255;
-% h(3).FaceColor = [250,185,219]/255;
-% h(4).FaceColor = [28 15 142]/255;
-% h(5).FaceColor = [255 255 255]/255;
-% % h(6).FaceColor = [0 0 0]/255;
-% legend({subj{:},'avg'},'AutoUpdate','off','location','northeast');
-% 
-% set(gca,gcaOpts{:})
-% title('Orientation sensitivity (d'')')
-% xlabel('Condition')
-% ylabel('d-prime')
-% ylim([-1 3.5])
 
 %% COMPARE C VS NC DPRIMES 
 cndNames = {'Grasp','Key-only'};
@@ -837,61 +907,7 @@ xlabel('Condition')
 ylabel('d-prime')
 ylim([0 2.7])
 
-%% PLOT D PRIME COMPARISON, GRASP VS NO GRASP / RIGHT HEMI
-% cndNames = {'No crowding','Crowding'};
-% gcaOpts = {'XTick',1:length(cndNames),'XTickLabel',cndNames,'box',...
-%     'off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
-% 
-% figure
-% % h = bar([RH_NC_diff, mean_RH_NC_grp-mean_RH_NC_key; RH_C_diff, mean_RH_C_grp-mean_RH_C_key]); 
-% % h(1).FaceColor = [135,205,215]/255;
-% % h(2).FaceColor = [240,59,37]/255;
-% % h(3).FaceColor = [250,185,219]/255;
-% % h(4).FaceColor = [28 15 142]/255;
-% % h(5).FaceColor = [255 255 255]/255;
-% h = bar([mean_RH_NC_grp-mean_RH_NC_key; mean_RH_C_grp-mean_RH_C_key]); 
-% h(1).FaceColor = [135,205,215]/255;
-% % h(6).FaceColor = [0 0 0]/255;
-% legend({'avg'},'AutoUpdate','off','location','northeast');
-% 
-% set(gca,gcaOpts{:})
-% title('d'' diff (grasping - key only) in RH')
-% xlabel('Condition')
-% ylabel('d'' difference')
-% ylim([-1 1])
 
-cndNames = {'NC','C'};
-gcaOpts = {'XTick',[],'box','off','tickdir','out','fontname','Helvetica','linewidth',2,'fontsize',14};
-
-figure
-x = [mean(RH_NC_dp_grp-RH_NC_dp_key) 0; mean(RH_C_dp_grp-RH_C_dp_key) 1];
-err = [std(RH_NC_dp_grp-RH_NC_dp_key)/sqrt(nSubj); std(RH_C_dp_grp-RH_C_dp_key)/sqrt(nSubj)];
-x1 = [1 1.75];
-for i=1:length(x)
-  h = bar(x1(i),x(i,1),0.5,'EdgeColor',[0 0 0],'LineWidth',1.5);
-  if i == 1, hold on, end
-  if ~x(i,2)
-    col = [135,205,215]/255;
-  else
-    col = [255,175,161]/255;
-  end
-  set(h, 'FaceColor', col) 
-end
-hold on;
-ngroups = 1;
-nbars = size(x, 1);
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-for i = 1:nbars
-    errorbar(x1(i), x(i), err(i), 'k', 'LineWidth', 1.5, 'linestyle', 'none');
-end
-line([0 2.75],[0 0],'LineWidth',1.5,'color','k')
-legend(cndNames,'AutoUpdate','off','location','northeast');
-set(gca,gcaOpts{:})
-title('Grasp-keypress sensitivity difference')
-xlabel('Condition')
-ylabel('d'' difference')
-xlim([.25 2.5])
-ylim([-.4 1])
 
 %% PLOT D PRIME COMPARISON, GRASP VS NO GRASP / CATCH TRIALS
 cndNames = {'NC','C'};
